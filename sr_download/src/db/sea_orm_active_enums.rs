@@ -3,8 +3,8 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "save_type_enum")]
-pub enum SaveTypeEnum {
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "save_type")]
+pub enum SaveType {
     #[sea_orm(string_value = "none")]
     None,
     #[sea_orm(string_value = "save")]

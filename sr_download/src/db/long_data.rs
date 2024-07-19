@@ -12,6 +12,21 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::main_data::Entity",
+        from = "Column::SaveId",
+        to = "super::main_data::Column::SaveId",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
+    MainData,
+}
+
+impl Related<super::main_data::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::MainData.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}

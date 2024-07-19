@@ -13,7 +13,12 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(LongData::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(LongData::SaveId).integer().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(LongData::SaveId)
+                            .integer()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(LongData::Len).string().not_null())
                     .col(ColumnDef::new(LongData::Text).string().not_null())
                     .foreign_key(

@@ -1,6 +1,6 @@
 use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::extension::postgres::Type;
-use sea_orm_migration::{manager, prelude::*};
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

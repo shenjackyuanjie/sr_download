@@ -2,5 +2,6 @@
 resolver = "2"
 members = [
     "sr_download",
-    "migration"
+    "migration",
+    "db_part"
 ]

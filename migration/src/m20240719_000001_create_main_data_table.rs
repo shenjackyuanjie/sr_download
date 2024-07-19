@@ -6,7 +6,7 @@ use sea_orm_migration::prelude::*;
 pub struct Migration;
 
 #[derive(DeriveIden)]
-struct SaveTypeEnum;
+pub struct SaveTypeEnum;
 
 #[derive(DeriveIden, EnumIter)]
 pub enum SaveTypeVariants {

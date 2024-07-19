@@ -1,0 +1,13 @@
+[package]
+name = "db_part"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { version = "1.0.86", features = ["backtrace"] }
+migration = { path = "../migration" }
+sea-orm = {version = "0.12.15", features = [
+    "sqlx-postgres",
+    "runtime-tokio-rustls"
+]}
+tokio = { version = "1.38.1", features = ["full"] }

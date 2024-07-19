@@ -1,7 +1,7 @@
 pub use sea_orm_migration::prelude::*;
 
-mod m20240719_000001_create_main_data_table;
-mod m20240719_101428_create_long_data_table;
+mod m20240719_00001_create_main_data_table;
+mod m20240719_00002_create_long_data_table;
 
 pub struct Migrator;
 
@@ -9,8 +9,8 @@ pub struct Migrator;
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
-            Box::new(m20240719_000001_create_main_data_table::Migration),
-            Box::new(m20240719_101428_create_long_data_table::Migration),
+            Box::new(m20240719_00001_create_main_data_table::Migration),
+            Box::new(m20240719_00002_create_long_data_table::Migration),
         ]
     }
 }

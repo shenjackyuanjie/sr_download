@@ -1,4 +1,4 @@
-use Request::blocking::Client;
+// use Request::blocking::Client;
 
 pub struct Downloader {
     pub client: Client,
@@ -35,16 +35,16 @@ enum FileKind {
     Save,
 }
 
-/// 飞船 API http://jundroo.com/service/SimpleRockets/DownloadRocket?id=
-/// 存档 API http://jundroo.com/service/SimpleRockets/DownloadSandBox?id=
-/// curl http://jundroo.com/service/SimpleRockets/DownloadRocket?id=144444
-fn get_file_from_jundroo(id: u64) -> Result<FileKind, Box<dyn std::error::Error>> {
-    let ship_try = reqwest::blocking::get(format!(
-        "http://jundroo.com/service/SimpleRockets/DownloadRocket?id={}",
-        id
-    ))?;
-    println!("ship_try: {:?}", ship_try);
-    println!("body: {}", ship_try.text()?);
+//  飞船 API http://jundroo.com/service/SimpleRockets/DownloadRocket?id=
+//  存档 API http://jundroo.com/service/SimpleRockets/DownloadSandBox?id=
+//  curl http://jundroo.com/service/SimpleRockets/DownloadRocket?id=144444
+// fn get_file_from_jundroo(id: u64) -> Result<FileKind, Box<dyn std::error::Error>> {
+//     let ship_try = reqwest::blocking::get(format!(
+//         "http://jundroo.com/service/SimpleRockets/DownloadRocket?id={}",
+//         id
+//     ))?;
+//     println!("ship_try: {:?}", ship_try);
+//     println!("body: {}", ship_try.text()?);
 
-    Ok(FileKind::Ship)
-}
+//     Ok(FileKind::Ship)
+// }

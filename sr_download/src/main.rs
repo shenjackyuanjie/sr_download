@@ -1,5 +1,5 @@
 mod config;
-mod net;
+mod db;
 
 #[tokio::main]
 async fn main() {}

@@ -1,11 +1,12 @@
 use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::extension::postgres::Type;
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{manager, prelude::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
 #[derive(DeriveIden)]
+#[sea_orm(iden = "save_type")]
 pub struct SaveTypeEnum;
 
 #[derive(DeriveIden, EnumIter)]
@@ -23,6 +24,9 @@ pub enum SaveTypeVariants {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_type(Type::drop().if_exists().name(SaveTypeEnum).to_owned())
+            .await?;
         manager
             .create_type(
                 Type::create()
@@ -67,7 +71,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum MainData {
+pub enum MainData {
     /// 表
     Table,
     /// 这个存档的 Id

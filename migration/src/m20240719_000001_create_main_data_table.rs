@@ -35,25 +35,25 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Main::Table)
+                    .table(MainData::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Main::SaveId)
+                        ColumnDef::new(MainData::SaveId)
                             .integer()
                             .not_null()
                             .primary_key(),
                     )
                     .col(
-                        ColumnDef::new(Main::SaveType)
+                        ColumnDef::new(MainData::SaveType)
                             .enumeration(SaveTypeEnum, SaveTypeVariants::iter())
                             .not_null(),
                     )
                     // blake hash:
                     // ad4a4c99162bac6766fa9a658651688c6db4955922f8e5447cb14ad1c1b05825
                     // len = 64
-                    .col(ColumnDef::new(Main::BlakeHash).char_len(64).not_null())
-                    .col(ColumnDef::new(Main::Len).integer().not_null())
-                    .col(ColumnDef::new(Main::ShortData).string_len(1024))
+                    .col(ColumnDef::new(MainData::BlakeHash).char_len(64).not_null())
+                    .col(ColumnDef::new(MainData::Len).integer().not_null())
+                    .col(ColumnDef::new(MainData::ShortData).string_len(1024))
                     .to_owned(),
             )
             .await
@@ -61,13 +61,13 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Main::Table).to_owned())
+            .drop_table(Table::drop().table(MainData::Table).to_owned())
             .await
     }
 }
 
 #[derive(DeriveIden)]
-enum Main {
+enum MainData {
     /// 表
     Table,
     /// 这个存档的 Id

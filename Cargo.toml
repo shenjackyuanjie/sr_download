@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["sr_download", "migration", "db_part", "tests"]
+members = ["sr_download", "migration"]

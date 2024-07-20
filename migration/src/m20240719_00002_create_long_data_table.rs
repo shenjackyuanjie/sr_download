@@ -19,7 +19,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(LongData::Len).string().not_null())
+                    .col(ColumnDef::new(LongData::Len).big_integer().not_null())
                     .col(ColumnDef::new(LongData::Text).string().not_null())
                     .foreign_key(
                         ForeignKey::create()

@@ -10,7 +10,7 @@ pub struct Model {
     pub save_id: i32,
     pub save_type: SaveType,
     pub blake_hash: String,
-    pub len: i32,
+    pub len: i64,
     pub short_data: Option<String>,
 }
 

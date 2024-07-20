@@ -56,7 +56,7 @@ impl MigrationTrait for Migration {
                     // ad4a4c99162bac6766fa9a658651688c6db4955922f8e5447cb14ad1c1b05825
                     // len = 64
                     .col(ColumnDef::new(MainData::BlakeHash).char_len(64).not_null())
-                    .col(ColumnDef::new(MainData::Len).integer().not_null())
+                    .col(ColumnDef::new(MainData::Len).big_integer().not_null())
                     .col(ColumnDef::new(MainData::ShortData).string_len(1024))
                     .to_owned(),
             )

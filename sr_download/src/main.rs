@@ -7,6 +7,7 @@ mod model;
 mod net;
 
 pub type SaveId = u32;
+pub const TEXT_DATA_MAX_LEN: usize = 1024;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -22,6 +23,9 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let db_connect = db::connect(&conf).await?;
+    let start_id = db::find_max_id(&db_connect).await;
+
+    event!(Level::INFO, "Starting download from save_id: {}", start_id);
 
     Ok(())
 }

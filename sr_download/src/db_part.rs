@@ -1,7 +1,7 @@
 use blake3::Hasher;
 use sea_orm::{
-    ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, EntityTrait,
-    IntoActiveModel, ModelTrait, QueryOrder, QuerySelect, TransactionTrait,
+    ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, EntityTrait, IntoActiveModel,
+    ModelTrait, QueryOrder, QuerySelect, TransactionTrait,
 };
 use tracing::{event, Level};
 
@@ -59,19 +59,21 @@ pub enum CoverStrategy {
 /// 如果失败, 会返回 Err
 /// 如果成功, 会返回 Ok(true)
 /// 如果数据已经存在, 会根据策略返回
-pub async fn save_data_to_db<D>(
+pub async fn save_data_to_db<T, D>(
     save_id: SaveId,
-    save_type: SaveType,
+    save_type: T,
     data: D,
     cover_strategy: Option<CoverStrategy>,
     db: &DatabaseConnection,
 ) -> anyhow::Result<bool>
 where
     D: Into<String>,
+    T: Into<SaveType>,
 {
     // 干活之前, 先检查一下数据是否已经存在
     // 如果已经存在, 那就根据策略来处理
     let cover_strategy = cover_strategy.unwrap_or_default();
+    let save_type: SaveType = save_type.into();
     let exitst_data: Option<model::main_data::Model> = {
         model::main_data::Entity::find_by_id(save_id as i32)
             .select_only()

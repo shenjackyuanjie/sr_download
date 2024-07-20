@@ -1,7 +1,7 @@
 use reqwest::Client;
 use std::time::Duration;
 
-use crate::SaveId;
+use crate::{model::sea_orm_active_enums::SaveType, SaveId};
 
 pub struct Downloader {
     pub client: Client,
@@ -23,20 +23,32 @@ impl DownloadFile {
             _ => None,
         }
     }
-
     pub fn as_save(&self) -> Option<&str> {
         match self {
             DownloadFile::Save(s) => Some(s),
             _ => None,
         }
     }
-
     pub fn is_ship(&self) -> bool {
-        self.as_ship().is_some()
+        matches!(self, DownloadFile::Ship(_))
     }
-
     pub fn is_save(&self) -> bool {
-        self.as_save().is_some()
+        matches!(self, DownloadFile::Save(_))
+    }
+    pub fn take_data(self) -> String {
+        match self {
+            DownloadFile::Ship(s) => s,
+            DownloadFile::Save(s) => s,
+        }
+    }
+}
+
+impl From<&DownloadFile> for SaveType {
+    fn from(file: &DownloadFile) -> Self {
+        match file {
+            DownloadFile::Ship(_) => SaveType::Ship,
+            DownloadFile::Save(_) => SaveType::Save,
+        }
     }
 }
 

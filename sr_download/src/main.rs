@@ -91,12 +91,6 @@ async fn main() -> anyhow::Result<()> {
 
         if !works.is_empty() {
             let (result, index, remain) = select_all(works).await;
-            event!(
-                Level::INFO,
-                "worker {} finish with result: {:?}",
-                index,
-                result
-            );
             works = remain;
         }
     }

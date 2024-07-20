@@ -130,6 +130,7 @@ impl Downloader {
         None
     }
 
+    #[allow(unused)]
     /// 尝试用 ship 的 API 下载文件
     pub async fn download_as_ship(&self, id: SaveId) -> Option<String> {
         let url = Self::as_ship_url(id);
@@ -146,6 +147,7 @@ impl Downloader {
         None
     }
 
+    #[allow(unused)]
     /// 尝试用 save 的 API 下载文件
     pub async fn download_as_save(&self, id: SaveId) -> Option<String> {
         let url = Self::as_save_url(id);
@@ -162,6 +164,7 @@ impl Downloader {
         None
     }
 
+    #[allow(unused)]
     pub fn set_timeout(&mut self, timeout: Duration) {
         self.timeout = timeout;
     }

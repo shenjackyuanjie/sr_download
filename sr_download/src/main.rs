@@ -1,10 +1,12 @@
 use colored::Colorize;
 use futures::future::select_all;
 use std::{ops::Range, path::Path};
+use tokio::sync::oneshot::Receiver;
 use tracing::{event, Level};
 
 mod config;
 mod db_part;
+#[allow(unused)]
 mod model;
 mod net;
 
@@ -21,8 +23,13 @@ async fn big_worker(
     work_range: Range<SaveId>,
 ) {
     for work_id in work_range {
-        if db_part::check_have_none_empty_data(&db, work_id).await {
-            event!(Level::INFO, "{}", format!("Skip {}", work_id).blue());
+        let exist_len = db_part::check_data_len(&db, work_id).await;
+        if exist_len.is_some() && exist_len.unwrap() > 0 {
+            event!(
+                Level::INFO,
+                "{}",
+                format!("Skip download {} with exist data", work_id).blue()
+            );
             continue;
         }
         match match client.try_download_as_any(work_id).await {
@@ -48,6 +55,14 @@ async fn big_worker(
                 )
             }
             None => {
+                if exist_len.is_some() {
+                    event!(
+                        Level::INFO,
+                        "{}",
+                        format!("Skip save {} with no data", work_id).cyan()
+                    );
+                    continue;
+                }
                 event!(
                     Level::INFO,
                     "{}",
@@ -64,11 +79,7 @@ async fn big_worker(
     }
 }
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
-async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
-    event!(Level::INFO, "Starting srdownload");
-
+async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let conf = match config::ConfigFile::read_from_file(Path::new("config.toml")) {
         Ok(conf) => conf,
         Err(_) => {
@@ -80,7 +91,13 @@ async fn main() -> anyhow::Result<()> {
     let db_connect = db_part::connect(&conf).await?;
     let db_max_id = db_part::find_max_id(&db_connect).await;
 
-    event!(Level::INFO, "db max downloaded save_id: {}", db_max_id);
+    event!(
+        Level::INFO,
+        "{}",
+        format!("db max downloaded save_id: {}", db_max_id).green()
+    );
+
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
 
     // 1321469 end
     let end_id: SaveId = 1321469;
@@ -118,7 +135,39 @@ async fn main() -> anyhow::Result<()> {
             let (_result, _index, remain) = select_all(works).await;
             works = remain;
         }
+        if stop_receiver.try_recv().is_ok() {
+            event!(Level::INFO, "{}", "Stop download".red());
+            // 结束 db
+            db_connect.close().await?;
+            break;
+        }
     }
+    Ok(())
+}
 
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    event!(Level::INFO, "Starting srdownload");
+
+    // 初始化一个 ctrl-c 的监听器
+    let (ctrl_c_sender, ctrl_c_receiver) = tokio::sync::oneshot::channel::<()>();
+
+    // 把 main_works spawn 出去, 这样就可以在主线程检测 ctrl-c 了
+    let main_works = tokio::spawn(main_works(ctrl_c_receiver));
+
+    // ctrl-c 信号处理
+    let ctrl_c_waiter = tokio::spawn(async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to listen for Ctrl+C event");
+        event!(Level::INFO, "{}", "Ctrl-C received".red());
+        ctrl_c_sender.send(()).unwrap();
+    });
+
+    main_works.await??;
+    if !ctrl_c_waiter.is_finished() {
+        ctrl_c_waiter.abort()
+    }
     Ok(())
 }

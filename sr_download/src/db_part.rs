@@ -40,19 +40,24 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
     }
 }
 
-pub async fn check_have_none_empty_data(db: &DatabaseConnection, save_id: SaveId) -> bool {
+pub async fn check_data_len(db: &DatabaseConnection, save_id: SaveId) -> Option<i64> {
     // SELECT save_id from main_data WHERE save_id = $1 AND len > 0
     match model::main_data::Entity::find()
         .filter(model::main_data::Column::SaveId.eq(save_id as i32))
-        .filter(model::main_data::Column::Len.gt(0))
         .one(db)
         .await
     {
-        Ok(model) => model.is_some(),
-        Err(_) => false,
+        Ok(model) => {
+            if let Some(model) = model {
+                return Some(model.len);
+            }
+            None
+        }
+        Err(_) => None,
     }
 }
 
+#[allow(unused)]
 #[derive(Debug, Clone, Copy, Default)]
 pub enum CoverStrategy {
     #[default]
@@ -108,6 +113,9 @@ where
     hasher.update(data.as_bytes());
     let hash = hasher.finalize().to_hex().to_string();
 
+    if db.ping().await.is_err() {
+        return Err(anyhow::anyhow!("Database connection is broken"));
+    }
     let stuf = db.begin().await?;
 
     // 开个事务

@@ -13,9 +13,8 @@ pub struct ConfigFile {
 impl Default for ConfigFile {
     fn default() -> Self {
         Self {
-            db_url: "postgres://srdown:srdown@192.168.3.22:10001/srdown?currentSchema=srdown"
-                .to_string(),
-            db_schema: "srdown".to_string(),
+            db_url: "postgres://srdown:srdown@192.168.3.22:10001/srdown".to_string(),
+            db_schema: "public".to_string(),
             max_connections: 10,
             sqlx_logging: true,
         }

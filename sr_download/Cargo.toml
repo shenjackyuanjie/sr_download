@@ -6,9 +6,8 @@ edition = "2021"
 [dependencies]
 reqwest = "0.12.5"
 tokio = { version = "1.38.1", features = ["full"] }
-toml = "0.8.15"
 tracing = "0.1.40"
-serde = { version = "1.0.204", features = ["serde_derive"] }
+tracing-subscriber = "0.3.18"
 anyhow = { version = "1.0.86", features = ["backtrace"] }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,3 +16,6 @@ sea-orm = { version = "0.12.15", features = [
     "runtime-tokio-rustls",
 ] }
 migration = { path = "../migration" }
+
+serde = { version = "1.0.204", features = ["serde_derive"] }
+toml = "0.8.15"

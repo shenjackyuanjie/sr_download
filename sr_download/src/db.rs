@@ -1,6 +1,6 @@
 use blake3::Hasher;
 use sea_orm::{
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection, EntityTrait,
+    ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, EntityTrait,
     IntoActiveModel, ModelTrait, QueryOrder, QuerySelect, TransactionTrait,
 };
 use tracing::{event, Level};
@@ -59,8 +59,9 @@ pub enum CoverStrategy {
 /// 如果失败, 会返回 Err
 /// 如果成功, 会返回 Ok(true)
 /// 如果数据已经存在, 会根据策略返回
-pub async fn save_ship_to_db<D>(
+pub async fn save_data_to_db<D>(
     save_id: SaveId,
+    save_type: SaveType,
     data: D,
     cover_strategy: Option<CoverStrategy>,
     db: &DatabaseConnection,
@@ -130,7 +131,7 @@ where
         // 过长, 需要把数据放到 long_data 里
         let new_data = model::main_data::Model {
             save_id: save_id as i32,
-            save_type: SaveType::Ship,
+            save_type,
             blake_hash: hash,
             len: data_len as i64,
             short_data: None,
@@ -148,7 +149,7 @@ where
         // 直接放到 main_data 里即可
         let new_data = model::main_data::Model {
             save_id: save_id as i32,
-            save_type: SaveType::Ship,
+            save_type,
             blake_hash: hash,
             len: data_len as i64,
             short_data: Some(data),

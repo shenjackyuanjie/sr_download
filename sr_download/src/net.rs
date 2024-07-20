@@ -9,24 +9,24 @@ pub struct Downloader {
 }
 
 /// 使用 any 下载下来的文件
-pub enum SaveFile {
+pub enum DownloadFile {
     /// 是艘船
     Ship(String),
     /// 是存档
     Save(String),
 }
 
-impl SaveFile {
+impl DownloadFile {
     pub fn as_ship(&self) -> Option<&str> {
         match self {
-            SaveFile::Ship(s) => Some(s),
+            DownloadFile::Ship(s) => Some(s),
             _ => None,
         }
     }
 
     pub fn as_save(&self) -> Option<&str> {
         match self {
-            SaveFile::Save(s) => Some(s),
+            DownloadFile::Save(s) => Some(s),
             _ => None,
         }
     }
@@ -65,7 +65,7 @@ impl Downloader {
     /// 尝试用 ship 或者 save 的 API 下载文件
     /// 如果两个都没下载到，返回 None
     /// 如果下载到了，返回 Some(文件内容)
-    pub async fn try_download_as_any(&self, id: SaveId) -> Option<SaveFile> {
+    pub async fn try_download_as_any(&self, id: SaveId) -> Option<DownloadFile> {
         // 先尝试用 ship 的 API 下载
         let ship_url = Self::as_ship_url(id);
         let ship_try = self
@@ -79,7 +79,7 @@ impl Downloader {
                 if let Ok(body) = ship_try.text().await {
                     // 再判空
                     if !(body.is_empty() || body == "0") {
-                        return Some(SaveFile::Ship(body));
+                        return Some(DownloadFile::Ship(body));
                     }
                 }
             }
@@ -97,7 +97,7 @@ impl Downloader {
                 if let Ok(body) = save_try.text().await {
                     // 再判空
                     if !(body.is_empty() || body == "0") {
-                        return Some(SaveFile::Save(body));
+                        return Some(DownloadFile::Save(body));
                     }
                 }
             }

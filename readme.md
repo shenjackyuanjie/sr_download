@@ -3,6 +3,7 @@
 ## V2
 
 Rewritten in Rust !
+
 (其实最早 v1 就是用 rust 写的, 不过我 2023 年 6 月 可才刚学 rust, 代码写的很烂, 所以还是回到了 python 小脚本)
 
 ## V1

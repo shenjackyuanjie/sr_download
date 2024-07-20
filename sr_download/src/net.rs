@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use crate::{model::sea_orm_active_enums::SaveType, SaveId};
 
+#[derive(Debug, Clone)]
 pub struct Downloader {
     pub client: Client,
     timeout: Duration,
@@ -95,7 +96,7 @@ impl Downloader {
         let ship_try = self
             .client
             .get(&ship_url)
-            .timeout(self.timeout.clone())
+            .timeout(self.timeout)
             .send()
             .await;
         if let Ok(ship_try) = ship_try {
@@ -113,7 +114,7 @@ impl Downloader {
         let save_try = self
             .client
             .get(&save_url)
-            .timeout(self.timeout.clone())
+            .timeout(self.timeout)
             .send()
             .await;
         if let Ok(save_try) = save_try {
@@ -132,12 +133,7 @@ impl Downloader {
     /// 尝试用 ship 的 API 下载文件
     pub async fn download_as_ship(&self, id: SaveId) -> Option<String> {
         let url = Self::as_ship_url(id);
-        let try_res = self
-            .client
-            .get(&url)
-            .timeout(self.timeout.clone())
-            .send()
-            .await;
+        let try_res = self.client.get(&url).timeout(self.timeout).send().await;
         if let Ok(try_res) = try_res {
             if try_res.status().is_success() {
                 if let Ok(body) = try_res.text().await {
@@ -153,12 +149,7 @@ impl Downloader {
     /// 尝试用 save 的 API 下载文件
     pub async fn download_as_save(&self, id: SaveId) -> Option<String> {
         let url = Self::as_save_url(id);
-        let try_res = self
-            .client
-            .get(&url)
-            .timeout(self.timeout.clone())
-            .send()
-            .await;
+        let try_res = self.client.get(&url).timeout(self.timeout).send().await;
         if let Ok(try_res) = try_res {
             if try_res.status().is_success() {
                 if let Ok(body) = try_res.text().await {

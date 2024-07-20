@@ -1,7 +1,7 @@
 use blake3::Hasher;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection, EntityTrait,
-    IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
+    IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, TransactionTrait,
 };
 use tracing::{event, Level};
 
@@ -29,8 +29,6 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
     // 我丢你老母, 有这时间写这个, 我都写完 sql 语句了
     match model::main_data::Entity::find()
         .order_by_desc(model::main_data::Column::SaveId)
-        // .select_only()
-        // .column(model::main_data::Column::SaveId)
         .one(db)
         .await
     {
@@ -39,6 +37,19 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
             None => 0,
         },
         Err(_) => 0,
+    }
+}
+
+pub async fn check_have_none_empty_data(db: &DatabaseConnection, save_id: SaveId) -> bool {
+    // SELECT save_id from main_data WHERE save_id = $1 AND len > 0
+    match model::main_data::Entity::find()
+        .filter(model::main_data::Column::SaveId.eq(save_id as i32))
+        .filter(model::main_data::Column::Len.gt(0))
+        .one(db)
+        .await
+    {
+        Ok(model) => model.is_some(),
+        Err(_) => false,
     }
 }
 
@@ -85,7 +96,7 @@ where
         match cover_strategy {
             CoverStrategy::Error => return Err(anyhow::anyhow!("Data already exists")),
             CoverStrategy::Skip => return Ok(false),
-            _ => {}
+            _ => (),
         }
     }
 

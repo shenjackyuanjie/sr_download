@@ -15,9 +15,16 @@ use model::sea_orm_active_enums::SaveType;
 
 use crate::db_part::CoverStrategy;
 
-async fn big_worker(db: sea_orm::DatabaseConnection, work_range: Range<SaveId>) {
-    let client = net::Downloader::default();
+async fn big_worker(
+    db: sea_orm::DatabaseConnection,
+    client: net::Downloader,
+    work_range: Range<SaveId>,
+) {
     for work_id in work_range {
+        if db_part::check_have_none_empty_data(&db, work_id).await {
+            event!(Level::INFO, "{}", format!("Skip {}", work_id).blue());
+            continue;
+        }
         match match client.try_download_as_any(work_id).await {
             Some(file) => {
                 event!(
@@ -85,9 +92,11 @@ async fn main() -> anyhow::Result<()> {
     let mut works = Vec::with_capacity(conf.worker_count as usize);
     let max_works = conf.worker_count as usize;
     for _ in 0..works.len() {
+        let client = net::Downloader::new(conf.timeout_as_duration());
         let end = current_id + batch_size;
         works.push(tokio::spawn(big_worker(
             db_connect.clone(),
+            client,
             current_id..end,
         )));
         current_id = end;
@@ -95,9 +104,11 @@ async fn main() -> anyhow::Result<()> {
 
     while current_id < end_id || !works.is_empty() {
         while current_id < end_id && works.len() < max_works {
+            let client = net::Downloader::new(conf.timeout_as_duration());
             let end = current_id + batch_size;
             works.push(tokio::spawn(big_worker(
                 db_connect.clone(),
+                client,
                 current_id..end,
             )));
             current_id = end;

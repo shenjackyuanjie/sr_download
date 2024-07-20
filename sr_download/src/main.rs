@@ -1,3 +1,4 @@
+use colored::Colorize;
 use futures::future::select_all;
 use std::{ops::Range, path::Path};
 use tracing::{event, Level};
@@ -17,14 +18,26 @@ async fn big_worker(db: sea_orm::DatabaseConnection, work_range: Range<SaveId>) 
     for work_id in work_range {
         match match client.try_download_as_any(work_id).await {
             Some(file) => {
+                event!(
+                    Level::INFO,
+                    "{}",
+                    format!("Download {} with data len: {}", work_id, file.len()).green()
+                );
                 let save_type = (&file).into();
                 db_part::save_data_to_db(work_id, save_type, file.take_data(), None, &db)
             }
-            None => db_part::save_data_to_db(work_id, SaveType::None, "".to_string(), None, &db),
+            None => {
+                event!(
+                    Level::INFO,
+                    "{}",
+                    format!("Download {} with no data", work_id).yellow()
+                );
+                db_part::save_data_to_db(work_id, SaveType::None, "".to_string(), None, &db)
+            }
         }
         .await
         {
-            Ok(_) => event!(Level::INFO, "Save data {} success", work_id),
+            Ok(_) => (),
             Err(e) => event!(Level::WARN, "Save data {} failed: {:?}", work_id, e),
         }
     }

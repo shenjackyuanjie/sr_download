@@ -41,6 +41,12 @@ impl DownloadFile {
             DownloadFile::Save(s) => s,
         }
     }
+    pub fn len(&self) -> usize {
+        match self {
+            DownloadFile::Ship(s) => s.len(),
+            DownloadFile::Save(s) => s.len(),
+        }
+    }
 }
 
 impl From<&DownloadFile> for SaveType {

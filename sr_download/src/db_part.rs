@@ -1,7 +1,7 @@
 use blake3::Hasher;
 use sea_orm::{
-    ActiveModelTrait, ConnectOptions, Database, DatabaseConnection, EntityTrait, IntoActiveModel,
-    ModelTrait, QueryOrder, QuerySelect, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection, EntityTrait,
+    IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait,
 };
 use tracing::{event, Level};
 
@@ -75,12 +75,11 @@ where
     let cover_strategy = cover_strategy.unwrap_or_default();
     let save_type: SaveType = save_type.into();
     let exitst_data: Option<model::main_data::Model> = {
-        model::main_data::Entity::find_by_id(save_id as i32)
-            .select_only()
-            .column(model::main_data::Column::BlakeHash)
-            .column(model::main_data::Column::Len)
+        model::main_data::Entity::find()
+            .filter(model::main_data::Column::SaveId.eq(save_id as i32))
             .one(db)
-            .await?
+            .await
+            .unwrap_or(None)
     };
     if exitst_data.is_some() {
         match cover_strategy {

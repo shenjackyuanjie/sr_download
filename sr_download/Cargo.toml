@@ -21,3 +21,4 @@ serde = { version = "1.0.204", features = ["serde_derive"] }
 toml = "0.8.15"
 blake3 = "1.5.3"
 futures = "0.3.30"
+colored = "2.1.0"

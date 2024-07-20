@@ -2,6 +2,8 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use crate::SaveId;
+
 #[derive(Serialize, Deserialize)]
 pub struct ConfigFile {
     pub db_url: String,
@@ -10,6 +12,7 @@ pub struct ConfigFile {
     pub sqlx_logging: bool,
     pub worker_count: u32,
     pub worker_size: u32,
+    pub start_id: SaveId,
 }
 
 impl Default for ConfigFile {
@@ -21,6 +24,7 @@ impl Default for ConfigFile {
             sqlx_logging: true,
             worker_count: 10,
             worker_size: 10,
+            start_id: 1,
         }
     }
 }

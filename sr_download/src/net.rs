@@ -47,6 +47,12 @@ impl DownloadFile {
             DownloadFile::Save(s) => s.len(),
         }
     }
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            DownloadFile::Ship(_) => "Ship",
+            DownloadFile::Save(_) => "Save",
+        }
+    }
 }
 
 impl From<&DownloadFile> for SaveType {

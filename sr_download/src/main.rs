@@ -13,6 +13,8 @@ pub const TEXT_DATA_MAX_LEN: usize = 1024;
 
 use model::sea_orm_active_enums::SaveType;
 
+use crate::db_part::CoverStrategy;
+
 async fn big_worker(db: sea_orm::DatabaseConnection, work_range: Range<SaveId>) {
     let client = net::Downloader::default();
     for work_id in work_range {
@@ -21,10 +23,22 @@ async fn big_worker(db: sea_orm::DatabaseConnection, work_range: Range<SaveId>) 
                 event!(
                     Level::INFO,
                     "{}",
-                    format!("Download {} with data len: {}", work_id, file.len()).green()
+                    format!(
+                        "Download {} with {} data len: {}",
+                        work_id,
+                        file.type_name(),
+                        file.len()
+                    )
+                    .green()
                 );
                 let save_type = (&file).into();
-                db_part::save_data_to_db(work_id, save_type, file.take_data(), None, &db)
+                db_part::save_data_to_db(
+                    work_id,
+                    save_type,
+                    file.take_data(),
+                    Some(CoverStrategy::CoverIfDifferent),
+                    &db,
+                )
             }
             None => {
                 event!(
@@ -57,14 +71,14 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let db_connect = db_part::connect(&conf).await?;
-    let start_id = db_part::find_max_id(&db_connect).await;
+    let db_max_id = db_part::find_max_id(&db_connect).await;
 
-    event!(Level::INFO, "Starting download from save_id: {}", start_id);
+    event!(Level::INFO, "db max downloaded save_id: {}", db_max_id);
 
     // 1321469 end
     let end_id: SaveId = 1321469;
 
-    let mut current_id = start_id;
+    let mut current_id = conf.start_id;
 
     let batch_size = conf.worker_size;
     // 10 works
@@ -90,7 +104,7 @@ async fn main() -> anyhow::Result<()> {
         }
 
         if !works.is_empty() {
-            let (result, index, remain) = select_all(works).await;
+            let (_result, _index, remain) = select_all(works).await;
             works = remain;
         }
     }

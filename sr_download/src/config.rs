@@ -8,6 +8,8 @@ pub struct ConfigFile {
     pub db_schema: String,
     pub max_connections: u32,
     pub sqlx_logging: bool,
+    pub worker_count: u32,
+    pub worker_size: u32,
 }
 
 impl Default for ConfigFile {
@@ -17,6 +19,8 @@ impl Default for ConfigFile {
             db_schema: "public".to_string(),
             max_connections: 10,
             sqlx_logging: true,
+            worker_count: 10,
+            worker_size: 10,
         }
     }
 }

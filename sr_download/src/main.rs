@@ -43,7 +43,7 @@ async fn big_worker(db: sea_orm::DatabaseConnection, work_range: Range<SaveId>) 
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     event!(Level::INFO, "Starting srdownload");
@@ -66,11 +66,11 @@ async fn main() -> anyhow::Result<()> {
 
     let mut current_id = start_id;
 
-    let batch_size = 100;
+    let batch_size = conf.worker_size;
     // 10 works
-    let mut works = Vec::with_capacity(10);
-    let max_works = 10;
-    for _ in 0..10 {
+    let mut works = Vec::with_capacity(conf.worker_count as usize);
+    let max_works = conf.worker_count as usize;
+    for _ in 0..works.len() {
         let end = current_id + batch_size;
         works.push(tokio::spawn(big_worker(
             db_connect.clone(),
@@ -78,6 +78,7 @@ async fn main() -> anyhow::Result<()> {
         )));
         current_id = end;
     }
+
     while current_id < end_id || !works.is_empty() {
         while current_id < end_id && works.len() < max_works {
             let end = current_id + batch_size;

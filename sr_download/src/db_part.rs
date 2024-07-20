@@ -29,8 +29,8 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
     // 我丢你老母, 有这时间写这个, 我都写完 sql 语句了
     match model::main_data::Entity::find()
         .order_by_desc(model::main_data::Column::SaveId)
-        .select_only()
-        .column(model::main_data::Column::SaveId)
+        // .select_only()
+        // .column(model::main_data::Column::SaveId)
         .one(db)
         .await
     {

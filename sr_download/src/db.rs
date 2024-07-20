@@ -1,5 +1,5 @@
 use sea_orm::{
-    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection, EntityTrait, IntoActiveModel, QueryOrder, QuerySelect
+    ActiveModelTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection, EntityTrait, IntoActiveModel, QueryOrder, QuerySelect, TransactionTrait
 };
 use blake3::Hasher;
 use tracing::{event, Level};
@@ -57,31 +57,38 @@ where
     hasher.update(data.as_bytes());
     let hash = hasher.finalize().to_hex().to_string();
 
+    // 开个事务
+    let stuf = db.begin().await?;
     if data_len > TEXT_DATA_MAX_LEN {
         // 过长, 需要把数据放到 long_data 里
         let new_data = model::main_data::Model {
             save_id: save_id as i32,
             save_type: SaveType::Ship,
             blake_hash: hash,
-            len: data_len as i32,
+            len: data_len as i64,
             short_data: None,
         };
         let long_data = model::long_data::Model {
             save_id: save_id as i32,
-            len: data_len as i32,
-            data,
+            len: data_len as i64,
+            text: data,
         };
+        // 先插入 new_data
+        // 然后插入 long_data
+        new_data.into_active_model().insert(db).await?;
+        long_data.into_active_model().insert(db).await?;
     } else {
         // 直接放到 main_data 里即可
         let new_data = model::main_data::Model {
             save_id: save_id as i32,
             save_type: SaveType::Ship,
             blake_hash: hash,
-            len: data_len as i32,
+            len: data_len as i64,
             short_data: Some(data),
         };
         new_data.into_active_model().insert(db).await?;
     }
+    stuf.commit().await?;
 
     Ok(())
 }

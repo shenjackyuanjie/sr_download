@@ -108,7 +108,9 @@ where
     {
         // 如果数据已经存在, 那就检查一下是否需要覆盖
         let exitst_data = exitst_data.unwrap();
-        if exitst_data.blake_hash == hash {
+        if exitst_data.blake_hash == hash
+            && matches!(cover_strategy, CoverStrategy::CoverIfDifferent)
+        {
             // 数据一样, 不需要覆盖
             stuf.commit().await?;
             return Ok(false);

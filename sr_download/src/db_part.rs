@@ -1,7 +1,8 @@
 use blake3::Hasher;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection, EntityTrait,
-    IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection, DbErr,
+    EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, QuerySelect,
+    TransactionTrait,
 };
 use tracing::{event, Level};
 
@@ -27,34 +28,38 @@ pub async fn connect(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
 pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
     // SELECT save_id from main_data ORDER BY save_id DESC LIMIT 1
     // 我丢你老母, 有这时间写这个, 我都写完 sql 语句了
-    match model::main_data::Entity::find()
+    let data: Result<Option<i32>, DbErr> = model::main_data::Entity::find()
         .order_by_desc(model::main_data::Column::SaveId)
+        .select_only()
+        .column(model::main_data::Column::SaveId)
+        .limit(1)
+        .into_tuple()
         .one(db)
-        .await
-    {
+        .await;
+    match data {
         Ok(model) => match model {
-            Some(model) => model.save_id as SaveId,
+            Some(model) => model as SaveId,
             None => 0,
         },
-        Err(_) => 0,
+        Err(e) => {
+            event!(Level::WARN, "Error when find_max_id: {:?}", e);
+            0
+        }
     }
 }
 
 pub async fn check_data_len(db: &DatabaseConnection, save_id: SaveId) -> Option<i64> {
     // SELECT save_id from main_data WHERE save_id = $1 AND len > 0
-    match model::main_data::Entity::find()
+    model::main_data::Entity::find()
         .filter(model::main_data::Column::SaveId.eq(save_id as i32))
+        .select_only()
+        .column(model::main_data::Column::Len)
+        .limit(1)
+        .into_tuple()
         .one(db)
         .await
-    {
-        Ok(model) => {
-            if let Some(model) = model {
-                return Some(model.len);
-            }
-            None
-        }
-        Err(_) => None,
-    }
+        .ok()
+        .flatten()
 }
 
 #[allow(unused)]

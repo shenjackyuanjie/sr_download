@@ -10,12 +10,10 @@ mod db_part;
 mod model;
 mod net;
 
-pub type SaveId = u32;
-pub const TEXT_DATA_MAX_LEN: usize = 1024;
-
 use model::sea_orm_active_enums::SaveType;
 
 use crate::db_part::CoverStrategy;
+use migration::SaveId;
 
 async fn big_worker(
     db: sea_orm::DatabaseConnection,
@@ -89,6 +87,7 @@ async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     };
 
     let db_connect = db_part::connect(&conf).await?;
+    db_part::migrate(&db_connect).await?;
     let db_max_id = db_part::find_max_id(&db_connect).await;
 
     event!(

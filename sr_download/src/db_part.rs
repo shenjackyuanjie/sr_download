@@ -6,10 +6,10 @@ use sea_orm::{
 };
 use tracing::{event, Level};
 
+use crate::config::ConfigFile;
+use crate::model;
 use crate::model::sea_orm_active_enums::SaveType;
-use crate::{config::ConfigFile, SaveId};
-use crate::{model, TEXT_DATA_MAX_LEN};
-use migration::{Migrator, MigratorTrait, FULL_DATA_VIEW};
+use migration::{Migrator, MigratorTrait, SaveId, FULL_DATA_VIEW, TEXT_DATA_MAX_LEN};
 
 #[derive(Debug, Clone)]
 pub struct DbData {
@@ -83,10 +83,14 @@ pub async fn connect(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
     event!(Level::INFO, "Connecting to database");
     let db: DatabaseConnection = Database::connect(opt).await?;
     db.ping().await?;
-    event!(Level::INFO, "Connected to database, starting migration");
-    Migrator::up(&db, None).await?;
-    event!(Level::INFO, "Migration finished");
     Ok(db)
+}
+
+pub async fn migrate(db: &DatabaseConnection) -> anyhow::Result<()> {
+    event!(Level::INFO, "Starting migration");
+    Migrator::up(db, None).await?;
+    event!(Level::INFO, "Migration finished");
+    Ok(())
 }
 
 pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
@@ -112,11 +116,22 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
     }
 }
 
+#[allow(non_snake_case)]
+pub fn SaveType_from_str(str: String) -> Option<SaveType> {
+    match str.to_lowercase().as_str() {
+        "save" => Some(SaveType::Save),
+        "ship" => Some(SaveType::Ship),
+        "none" => Some(SaveType::None),
+        "unknown" => Some(SaveType::Unknown),
+        _ => None
+    }
+}
+
 /// 直接从数据库中查询数据, 这里数据库已经准备好了根据长度区分过的数据
 /// 可以从 full view 里直接选数据
 pub async fn get_raw_data(save_id: SaveId, db: &DatabaseConnection) -> Option<DbData> {
     let sql = format!(
-        "SELECT data, save_type, blake_hash FROM {} WHERE save_id = {}",
+        "SELECT data, save_type::text FROM {} WHERE save_id = {}",
         FULL_DATA_VIEW, save_id
     );
     let datas = db
@@ -126,9 +141,8 @@ pub async fn get_raw_data(save_id: SaveId, db: &DatabaseConnection) -> Option<Db
         ))
         .await
         .ok()??;
-    let text: String = datas.try_get_by_index(0).ok()?;
-    let save_type: SaveType = datas.try_get_by_index(1).ok()?;
-    let blake_hash: String = datas.try_get_by_index(2).ok()?;
+    let text: String = datas.try_get("", "data").ok()?;
+    let save_type: SaveType = SaveType_from_str(datas.try_get("", "save_type").ok()?)?;
     Some(DbData::new(save_id, text, save_type))
 }
 

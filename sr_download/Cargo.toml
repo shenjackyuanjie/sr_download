@@ -3,6 +3,10 @@ name = "sr_download"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "get-save"
+path = "./src/get-save.rs"
+
 [dependencies]
 reqwest = "0.12.5"
 tokio = { version = "1.38.1", features = ["full"] }

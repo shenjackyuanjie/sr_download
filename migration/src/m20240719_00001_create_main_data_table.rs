@@ -2,6 +2,8 @@ use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::extension::postgres::Type;
 use sea_orm_migration::prelude::*;
 
+use crate::TEXT_DATA_MAX_LEN;
+
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -56,7 +58,7 @@ impl MigrationTrait for Migration {
                     // len = 64
                     .col(ColumnDef::new(MainData::BlakeHash).char_len(64).not_null())
                     .col(ColumnDef::new(MainData::Len).big_integer().not_null())
-                    .col(ColumnDef::new(MainData::ShortData).string_len(1024))
+                    .col(ColumnDef::new(MainData::ShortData).string_len(TEXT_DATA_MAX_LEN as u32))
                     .to_owned(),
             )
             .await?;

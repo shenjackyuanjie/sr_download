@@ -11,6 +11,70 @@ use crate::{config::ConfigFile, SaveId};
 use crate::{model, TEXT_DATA_MAX_LEN};
 use migration::{Migrator, MigratorTrait, FULL_DATA_VIEW};
 
+#[derive(Debug, Clone)]
+pub struct DbData {
+    pub text: Option<String>,
+    pub save_id: SaveId,
+    pub save_type: SaveType,
+    pub len: i64,
+    pub blake_hash: String,
+}
+
+impl From<model::main_data::Model> for DbData {
+    fn from(data: model::main_data::Model) -> Self {
+        Self {
+            text: data.short_data,
+            save_id: data.save_id as SaveId,
+            save_type: data.save_type,
+            len: data.len,
+            blake_hash: data.blake_hash,
+        }
+    }
+}
+
+impl From<(model::main_data::Model, model::long_data::Model)> for DbData {
+    fn from(data: (model::main_data::Model, model::long_data::Model)) -> Self {
+        Self {
+            text: Some(data.1.text),
+            save_id: data.0.save_id as SaveId,
+            save_type: data.0.save_type,
+            len: data.0.len,
+            blake_hash: data.0.blake_hash,
+        }
+    }
+}
+
+impl DbData {
+    pub fn new(save_id: SaveId, data: String, save_type: SaveType) -> Self {
+        let len = data.len() as i64;
+        let mut hasher = Hasher::new();
+        hasher.update(data.as_bytes());
+        let hash = hasher.finalize().to_hex().to_string();
+        Self {
+            text: Some(data),
+            save_id,
+            save_type,
+            len,
+            blake_hash: hash,
+        }
+    }
+
+    pub fn need_long_data(&self) -> bool {
+        self.len > TEXT_DATA_MAX_LEN as i64 && self.text.is_none()
+    }
+
+    pub fn verify_hash(&self) -> bool {
+        if self.text.is_none() {
+            return false;
+        }
+        let text = self.text.as_ref().unwrap();
+        let mut hasher = Hasher::new();
+        hasher.update(text.as_bytes());
+        let hash = hasher.finalize().to_hex().to_string();
+        hash == self.blake_hash
+    }
+}
+
 pub async fn connect(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
     let mut opt = ConnectOptions::new(conf.db_url.clone());
     opt.max_connections(conf.max_connections)
@@ -50,20 +114,22 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
 
 /// 直接从数据库中查询数据, 这里数据库已经准备好了根据长度区分过的数据
 /// 可以从 full view 里直接选数据
-pub async fn get_raw_data(save_id: SaveId, db: &DatabaseConnection) -> Option<String> {
+pub async fn get_raw_data(save_id: SaveId, db: &DatabaseConnection) -> Option<DbData> {
     let sql = format!(
-        "SELECT data FROM {} WHERE save_id = {}",
+        "SELECT data, save_type, blake_hash FROM {} WHERE save_id = {}",
         FULL_DATA_VIEW, save_id
     );
-    db.query_one(Statement::from_string(
-        sea_orm::DatabaseBackend::Postgres,
-        sql,
-    ))
-    .await
-    .ok()??
-    .try_get_by_index(0)
-    .ok()
-    .flatten()
+    let datas = db
+        .query_one(Statement::from_string(
+            sea_orm::DatabaseBackend::Postgres,
+            sql,
+        ))
+        .await
+        .ok()??;
+    let text: String = datas.try_get_by_index(0).ok()?;
+    let save_type: SaveType = datas.try_get_by_index(1).ok()?;
+    let blake_hash: String = datas.try_get_by_index(2).ok()?;
+    Some(DbData::new(save_id, text, save_type))
 }
 
 pub async fn check_data_len(db: &DatabaseConnection, save_id: SaveId) -> Option<i64> {

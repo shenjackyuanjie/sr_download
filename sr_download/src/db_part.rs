@@ -100,7 +100,8 @@ where
             .filter(model::main_data::Column::SaveId.eq(save_id as i32))
             .one(db)
             .await
-            .unwrap_or(None)
+            .ok()
+            .flatten()
     };
     if exitst_data.is_some() {
         match cover_strategy {

@@ -1,15 +1,15 @@
 use blake3::Hasher;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectOptions, Database, DatabaseConnection, DbErr,
-    EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, QuerySelect,
-    TransactionTrait,
+    ActiveModelTrait, ColumnTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
+    DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, QuerySelect,
+    Statement, TransactionTrait,
 };
 use tracing::{event, Level};
 
 use crate::model::sea_orm_active_enums::SaveType;
 use crate::{config::ConfigFile, SaveId};
 use crate::{model, TEXT_DATA_MAX_LEN};
-use migration::{Migrator, MigratorTrait};
+use migration::{Migrator, MigratorTrait, FULL_DATA_VIEW};
 
 pub async fn connect(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
     let mut opt = ConnectOptions::new(conf.db_url.clone());
@@ -46,6 +46,24 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
             0
         }
     }
+}
+
+/// 直接从数据库中查询数据, 这里数据库已经准备好了根据长度区分过的数据
+/// 可以从 full view 里直接选数据
+pub async fn get_raw_data(save_id: SaveId, db: &DatabaseConnection) -> Option<String> {
+    let sql = format!(
+        "SELECT data FROM {} WHERE save_id = {}",
+        FULL_DATA_VIEW, save_id
+    );
+    db.query_one(Statement::from_string(
+        sea_orm::DatabaseBackend::Postgres,
+        sql,
+    ))
+    .await
+    .ok()??
+    .try_get_by_index(0)
+    .ok()
+    .flatten()
 }
 
 pub async fn check_data_len(db: &DatabaseConnection, save_id: SaveId) -> Option<i64> {
@@ -98,6 +116,7 @@ where
     let exitst_data: Option<model::main_data::Model> = {
         model::main_data::Entity::find()
             .filter(model::main_data::Column::SaveId.eq(save_id as i32))
+            .limit(1)
             .one(db)
             .await
             .ok()

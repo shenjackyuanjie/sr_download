@@ -4,6 +4,8 @@ mod m20240719_00001_create_main_data_table;
 mod m20240719_00002_create_long_data_table;
 mod m20240721_221623_create_indexs;
 
+pub use m20240721_221623_create_indexs::FULL_DATA_VIEW;
+
 pub struct Migrator;
 
 #[async_trait::async_trait]

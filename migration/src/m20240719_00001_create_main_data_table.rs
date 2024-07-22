@@ -35,7 +35,6 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-
         manager
             .create_table(
                 Table::create()
@@ -60,7 +59,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(MainData::ShortData).string_len(1024))
                     .to_owned(),
             )
-            .await
+            .await?;
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {

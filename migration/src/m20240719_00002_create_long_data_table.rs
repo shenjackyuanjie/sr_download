@@ -3,7 +3,7 @@ use sea_orm_migration::prelude::*;
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
-pub use crate::m20240719_00001_create_main_data_table::MainData;
+use crate::m20240719_00001_create_main_data_table::MainData;
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
@@ -42,7 +42,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum LongData {
+pub enum LongData {
     Table,
     /// 存档 ID
     SaveId,

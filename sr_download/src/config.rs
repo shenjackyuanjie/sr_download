@@ -1,34 +1,69 @@
+use migration::SaveId;
 use std::path::Path;
 
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
+use tracing::{event, Level};
 
-use migration::SaveId;
-
-#[derive(Serialize, Deserialize)]
-pub struct ConfigFile {
-    pub db_url: String,
-    pub db_schema: String,
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename = "db")]
+pub struct DbConfig {
+    pub url: String,
+    pub schema: String,
     pub max_connections: u32,
     pub sqlx_logging: bool,
-    pub worker_count: u32,
-    pub worker_size: u32,
-    pub start_id: SaveId,
-    pub max_timeout: f32,
 }
 
-impl Default for ConfigFile {
+impl Default for DbConfig {
     fn default() -> Self {
         Self {
-            db_url: "postgres://srdown:srdown@192.168.3.22:10001/srdown".to_string(),
-            db_schema: "public".to_string(),
+            url: "postgres://srdown:srdown@localhost:5432/srdown".to_string(),
+            schema: "public".to_string(),
             max_connections: 10,
             sqlx_logging: false,
-            worker_count: 10,
-            worker_size: 10,
-            start_id: 173860,
-            max_timeout: 1.0,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename = "fast-sync")]
+pub struct FastSyncConfig {
+    pub start_id: SaveId,
+    pub end_id: SaveId,
+    pub worker_count: u32,
+    pub worker_size: u32,
+}
+
+impl Default for FastSyncConfig {
+    fn default() -> Self {
+        Self {
+            start_id: 76859,
+            end_id: 1321469,
+            worker_count: 10,
+            worker_size: 10,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename = "sync")]
+pub struct SyncConfig {
+    pub max_timeout: f32,
+    pub fast: FastSyncConfig,
+}
+impl Default for SyncConfig {
+    fn default() -> Self {
+        Self {
+            max_timeout: 1.0,
+            fast: FastSyncConfig::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ConfigFile {
+    pub db: DbConfig,
+    pub sync: SyncConfig,
 }
 
 impl ConfigFile {
@@ -46,6 +81,26 @@ impl ConfigFile {
     }
 
     pub fn timeout_as_duration(&self) -> std::time::Duration {
-        std::time::Duration::from_secs_f32(self.max_timeout)
+        std::time::Duration::from_secs_f32(self.sync.max_timeout)
+    }
+
+    pub fn read_or_panic() -> Self {
+        match Self::read_from_file(Path::new("config.toml")) {
+            Ok(conf) => conf,
+            Err(e) => {
+                let _ = tracing_subscriber::fmt::try_init();
+                event!(Level::ERROR, "{}", "Please Fix the config.toml file".red());
+                event!(Level::ERROR, "Error: {:?}", e);
+                if let Err(e) = Self::write_default_to_file(Path::new("config_template.toml")) {
+                    event!(Level::ERROR, "Error while writing file: {:?}", e);
+                    event!(
+                        Level::ERROR,
+                        "template file like this: {}",
+                        toml::to_string(&Self::default()).unwrap()
+                    );
+                };
+                panic!("Please Fix the config.toml file");
+            }
+        }
     }
 }

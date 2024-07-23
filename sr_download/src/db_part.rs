@@ -76,10 +76,10 @@ impl DbData {
 }
 
 pub async fn connect(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
-    let mut opt = ConnectOptions::new(conf.db_url.clone());
-    opt.max_connections(conf.max_connections)
-        .set_schema_search_path(conf.db_schema.clone())
-        .sqlx_logging(conf.sqlx_logging);
+    let mut opt = ConnectOptions::new(conf.db.url.clone());
+    opt.max_connections(conf.db.max_connections)
+        .set_schema_search_path(conf.db.schema.clone())
+        .sqlx_logging(conf.db.sqlx_logging);
     event!(Level::INFO, "Connecting to database");
     let db: DatabaseConnection = Database::connect(opt).await?;
     db.ping().await?;
@@ -116,17 +116,6 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
     }
 }
 
-#[allow(non_snake_case)]
-pub fn SaveType_from_str(str: String) -> Option<SaveType> {
-    match str.to_lowercase().as_str() {
-        "save" => Some(SaveType::Save),
-        "ship" => Some(SaveType::Ship),
-        "none" => Some(SaveType::None),
-        "unknown" => Some(SaveType::Unknown),
-        _ => None
-    }
-}
-
 /// 直接从数据库中查询数据, 这里数据库已经准备好了根据长度区分过的数据
 /// 可以从 full view 里直接选数据
 pub async fn get_raw_data(save_id: SaveId, db: &DatabaseConnection) -> Option<DbData> {
@@ -142,7 +131,7 @@ pub async fn get_raw_data(save_id: SaveId, db: &DatabaseConnection) -> Option<Db
         .await
         .ok()??;
     let text: String = datas.try_get("", "data").ok()?;
-    let save_type: SaveType = SaveType_from_str(datas.try_get("", "save_type").ok()?)?;
+    let save_type: SaveType = datas.try_get("", "save_type").ok()?;
     Some(DbData::new(save_id, text, save_type))
 }
 

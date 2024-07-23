@@ -2,6 +2,7 @@
 name = "sr_download"
 version = "0.1.0"
 edition = "2021"
+default-run = "sr_download"
 
 [[bin]]
 name = "get-save"
@@ -26,3 +27,4 @@ toml = "0.8.15"
 blake3 = "1.5.3"
 futures = "0.3.30"
 colored = "2.1.0"
+clap = { version = "4.5.9", features = ["derive"] }

@@ -1,6 +1,6 @@
 use colored::Colorize;
 use futures::future::select_all;
-use std::{ops::Range, path::Path};
+use std::ops::Range;
 use tokio::sync::oneshot::Receiver;
 use tracing::{event, Level};
 
@@ -78,13 +78,7 @@ async fn big_worker(
 }
 
 async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
-    let conf = match config::ConfigFile::read_from_file(Path::new("config.toml")) {
-        Ok(conf) => conf,
-        Err(_) => {
-            config::ConfigFile::write_default_to_file(Path::new("config.toml"))?;
-            config::ConfigFile::default()
-        }
-    };
+    let conf = config::ConfigFile::read_or_panic();
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::migrate(&db_connect).await?;
@@ -98,18 +92,27 @@ async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
 
-    // 1321469 end
-    let end_id: SaveId = 1321469;
+    if stop_receiver.try_recv().is_ok() {
+        event!(Level::INFO, "{}", "Stop download".red());
+        // 结束 db
+        db_connect.close().await?;
+        return Ok(());
+    }
 
-    let mut current_id = conf.start_id;
-
-    let batch_size = conf.worker_size;
-    // 10 works
-    let mut works = Vec::with_capacity(conf.worker_count as usize);
-    let max_works = conf.worker_count as usize;
+    let end_id: SaveId = conf.sync.fast.end_id;
+    let worker_size = conf.sync.fast.worker_size;
+    let mut current_id = conf.sync.fast.start_id;
+    let mut works = Vec::with_capacity(conf.sync.fast.worker_count as usize);
+    let max_works = conf.sync.fast.worker_count as usize;
     for _ in 0..works.len() {
+        if stop_receiver.try_recv().is_ok() {
+            event!(Level::INFO, "{}", "Stop download".red());
+            // 结束 db
+            db_connect.close().await?;
+            return Ok(());
+        }
         let client = net::Downloader::new(conf.timeout_as_duration());
-        let end = current_id + batch_size;
+        let end = current_id + worker_size;
         works.push(tokio::spawn(big_worker(
             db_connect.clone(),
             client,
@@ -119,9 +122,15 @@ async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     }
 
     while current_id < end_id || !works.is_empty() {
+        if stop_receiver.try_recv().is_ok() {
+            event!(Level::INFO, "{}", "Stop download".red());
+            // 结束 db
+            db_connect.close().await?;
+            return Ok(());
+        }
         while current_id < end_id && works.len() < max_works {
             let client = net::Downloader::new(conf.timeout_as_duration());
-            let end = current_id + batch_size;
+            let end = current_id + worker_size;
             works.push(tokio::spawn(big_worker(
                 db_connect.clone(),
                 client,
@@ -133,12 +142,6 @@ async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
         if !works.is_empty() {
             let (_result, _index, remain) = select_all(works).await;
             works = remain;
-        }
-        if stop_receiver.try_recv().is_ok() {
-            event!(Level::INFO, "{}", "Stop download".red());
-            // 结束 db
-            db_connect.close().await?;
-            break;
         }
     }
     Ok(())

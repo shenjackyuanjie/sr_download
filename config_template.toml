@@ -6,6 +6,7 @@ sqlx_logging = false
 
 [sync]
 max_timeout = 1.0
+serve_wait_time = 10.0
 start_id = 76859
 
 [sync.fast]

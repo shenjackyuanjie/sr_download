@@ -98,6 +98,8 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
     // 我丢你老母, 有这时间写这个, 我都写完 sql 语句了
     let data: Result<Option<i32>, DbErr> = model::main_data::Entity::find()
         .order_by_desc(model::main_data::Column::SaveId)
+        .filter(model::main_data::Column::Len.gt(0))
+        .filter(model::main_data::Column::SaveType.ne(SaveType::None))
         .select_only()
         .column(model::main_data::Column::SaveId)
         .limit(1)

@@ -49,12 +49,14 @@ impl Default for FastSyncConfig {
 #[serde(rename = "sync")]
 pub struct SyncConfig {
     pub max_timeout: f32,
+    pub serve_wait_time: f32,
     pub fast: FastSyncConfig,
 }
 impl Default for SyncConfig {
     fn default() -> Self {
         Self {
             max_timeout: 1.0,
+            serve_wait_time: 10.0,
             fast: FastSyncConfig::default(),
         }
     }
@@ -80,7 +82,11 @@ impl ConfigFile {
         Ok(())
     }
 
-    pub fn timeout_as_duration(&self) -> std::time::Duration {
+    pub fn serve_duration(&self) -> std::time::Duration {
+        std::time::Duration::from_secs_f32(self.sync.serve_wait_time)
+    }
+
+    pub fn net_timeout(&self) -> std::time::Duration {
         std::time::Duration::from_secs_f32(self.sync.max_timeout)
     }
 

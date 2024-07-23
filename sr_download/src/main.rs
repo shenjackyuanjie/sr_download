@@ -1,6 +1,6 @@
 use colored::Colorize;
 use futures::future::select_all;
-use std::ops::Range;
+use std::{io::Write, ops::Range};
 use tokio::sync::oneshot::Receiver;
 use tracing::{event, Level};
 
@@ -10,10 +10,9 @@ mod db_part;
 mod model;
 mod net;
 
-use model::sea_orm_active_enums::SaveType;
-
 use crate::db_part::CoverStrategy;
 use migration::SaveId;
+use model::sea_orm_active_enums::SaveType;
 
 async fn big_worker(
     db: sea_orm::DatabaseConnection,
@@ -77,20 +76,101 @@ async fn big_worker(
     }
 }
 
-async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
+async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let conf = config::ConfigFile::read_or_panic();
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::migrate(&db_connect).await?;
-    let db_max_id = db_part::find_max_id(&db_connect).await;
+    let mut db_max_id = db_part::find_max_id(&db_connect).await;
 
     event!(
         Level::INFO,
         "{}",
-        format!("db max downloaded save_id: {}", db_max_id).green()
+        format!(
+            "数据库中最大的现有数据 id 为: {} 将从这里开始下载",
+            db_max_id
+        )
+        .green()
     );
 
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    let serve_wait_time = conf.serve_duration();
+    let client = net::Downloader::new(conf.net_timeout());
+
+    let mut waited = false;
+    loop {
+        if stop_receiver.try_recv().is_ok() {
+            event!(Level::INFO, "{}", "结束下载!".yellow());
+            // 结束 db
+            db_connect.close().await?;
+            return Ok(());
+        }
+
+        let work_id = db_max_id + 1;
+        match client.try_download_as_any(work_id).await {
+            Some(file) => {
+                if waited {
+                    println!();
+                    waited = false;
+                }
+                event!(
+                    Level::INFO,
+                    "{}",
+                    format!(
+                        "下载到了新的 {}!(懒得做中文了) ID为: {} 长度: {}",
+                        file.type_name(),
+                        work_id,
+                        file.len()
+                    )
+                    .green()
+                );
+                let save_type: SaveType = (&file).into();
+                match db_part::save_data_to_db(
+                    work_id,
+                    save_type,
+                    file.take_data(),
+                    Some(CoverStrategy::CoverIfDifferent),
+                    &db_connect,
+                )
+                .await
+                {
+                    Ok(_) => {
+                        {
+                            db_max_id = work_id;
+                            event!(
+                                Level::INFO,
+                                "{}",
+                                format!(
+                                    "保存好啦! (下一排的每一个 . 代表一个 {:?})",
+                                    serve_wait_time
+                                )
+                                .green()
+                            );
+                        };
+                    }
+                    Err(e) => {
+                        event!(Level::ERROR, "呜呜呜, 数据保存失败了: {:?}\n我不玩了!", e);
+                        return Err(e);
+                    }
+                }
+            }
+            None => {
+                print!(".");
+                waited = true;
+                let _ = std::io::stdout().flush();
+            }
+        }
+
+        tokio::time::sleep(serve_wait_time).await;
+    }
+}
+
+async fn fast_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
+    let conf = config::ConfigFile::read_or_panic();
+
+    let db_connect = db_part::connect(&conf).await?;
+    db_part::migrate(&db_connect).await?;
+
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     if stop_receiver.try_recv().is_ok() {
         event!(Level::INFO, "{}", "Stop download".red());
@@ -111,7 +191,7 @@ async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
             db_connect.close().await?;
             return Ok(());
         }
-        let client = net::Downloader::new(conf.timeout_as_duration());
+        let client = net::Downloader::new(conf.net_timeout());
         let end = current_id + worker_size;
         works.push(tokio::spawn(big_worker(
             db_connect.clone(),
@@ -129,7 +209,7 @@ async fn main_works(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
             return Ok(());
         }
         while current_id < end_id && works.len() < max_works {
-            let client = net::Downloader::new(conf.timeout_as_duration());
+            let client = net::Downloader::new(conf.net_timeout());
             let end = current_id + worker_size;
             works.push(tokio::spawn(big_worker(
                 db_connect.clone(),
@@ -152,24 +232,39 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     event!(Level::INFO, "Starting srdownload");
 
-    // 初始化一个 ctrl-c 的监听器
-    let (ctrl_c_sender, ctrl_c_receiver) = tokio::sync::oneshot::channel::<()>();
+    // 判断是否有 -f / -s 参数
+    let args: Vec<String> = std::env::args().collect();
+    let (stop_sender, stop_receiver) = tokio::sync::oneshot::channel::<()>();
 
-    // 把 main_works spawn 出去, 这样就可以在主线程检测 ctrl-c 了
-    let main_works = tokio::spawn(main_works(ctrl_c_receiver));
-
-    // ctrl-c 信号处理
-    let ctrl_c_waiter = tokio::spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Failed to listen for Ctrl+C event");
-        event!(Level::INFO, "{}", "Ctrl-C received".red());
-        ctrl_c_sender.send(()).unwrap();
-    });
-
-    main_works.await??;
-    if !ctrl_c_waiter.is_finished() {
-        ctrl_c_waiter.abort()
+    if args.contains(&"-s".to_string()) {
+        let job_waiter = tokio::spawn(serve_mode(stop_receiver));
+        // serve 模式的任务不会结束, 所以需要等待 ctrl-c
+        tokio::signal::ctrl_c().await?;
+        let _ = stop_sender.send(()); // 反正不需要管, 发过去了就行
+        job_waiter.await??;
+        event!(Level::INFO, "{}", "ctrl-c 收到啦! 停止下载".green());
+        return Ok(());
+    } else if args.contains(&"-f".to_string()) {
+        let stop_waiter = tokio::spawn(async move {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to listen for Ctrl+C event");
+            event!(Level::INFO, "{}", "Ctrl-C received".red());
+            stop_sender.send(()).unwrap();
+        });
+        let job_waiter = tokio::spawn(fast_mode(stop_receiver));
+        // fast 模式的任务会结束, 所以需要等待任务结束
+        job_waiter.await??;
+        let _ = stop_waiter.await;
+        return Ok(());
     }
+
+    event!(
+        Level::ERROR,
+        "{}",
+        "Please use -s or -f to start the program".red()
+    );
+    event!(Level::ERROR, "{}", "Use -s to start serve mode".red());
+    event!(Level::ERROR, "{}", "Use -f to start fast mode".red());
     Ok(())
 }

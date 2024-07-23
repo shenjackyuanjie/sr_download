@@ -1,4 +1,5 @@
 use std::path::Path;
+use migration::SaveId;
 
 #[allow(unused)]
 mod config;
@@ -6,8 +7,6 @@ mod config;
 mod db_part;
 #[allow(unused)]
 mod model;
-
-use migration::SaveId;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

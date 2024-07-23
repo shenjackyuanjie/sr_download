@@ -145,6 +145,7 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
                                 )
                                 .green()
                             );
+                            continue; // 保存好之后立即尝试下一次, 保证连续上传的时候的效率
                         };
                     }
                     Err(e) => {

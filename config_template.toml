@@ -7,10 +7,9 @@ sqlx_logging = false
 [sync]
 max_timeout = 1.0
 serve_wait_time = 10.0
-start_id = 76859
 
 [sync.fast]
 start_id = 76859
-end_id = 1321469
+end_id = 1321698
 worker_count = 10
 worker_size = 10

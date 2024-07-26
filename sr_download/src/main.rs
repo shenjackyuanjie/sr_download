@@ -77,7 +77,7 @@ async fn big_worker(
 }
 
 async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
-    let conf = config::ConfigFile::read_or_panic();
+    let conf = config::ConfigFile::try_read()?;
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::migrate(&db_connect).await?;
@@ -166,7 +166,7 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 }
 
 async fn fast_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
-    let conf = config::ConfigFile::read_or_panic();
+    let conf = config::ConfigFile::try_read()?;
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::migrate(&db_connect).await?;
@@ -236,36 +236,30 @@ async fn main() -> anyhow::Result<()> {
     // 判断是否有 -f / -s 参数
     let args: Vec<String> = std::env::args().collect();
     let (stop_sender, stop_receiver) = tokio::sync::oneshot::channel::<()>();
+    let stop_waiter = tokio::spawn(async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to listen for Ctrl+C event");
+        event!(Level::INFO, "{}", "Ctrl-C received".red());
+        stop_sender.send(()).unwrap();
+    });
+    let job_waiter;
 
     if args.contains(&"-s".to_string()) {
-        let job_waiter = tokio::spawn(serve_mode(stop_receiver));
-        // serve 模式的任务不会结束, 所以需要等待 ctrl-c
-        tokio::signal::ctrl_c().await?;
-        let _ = stop_sender.send(()); // 反正不需要管, 发过去了就行
-        job_waiter.await??;
-        event!(Level::INFO, "{}", "ctrl-c 收到啦! 停止下载".green());
-        return Ok(());
+        job_waiter = tokio::spawn(serve_mode(stop_receiver));
     } else if args.contains(&"-f".to_string()) {
-        let stop_waiter = tokio::spawn(async move {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("Failed to listen for Ctrl+C event");
-            event!(Level::INFO, "{}", "Ctrl-C received".red());
-            stop_sender.send(()).unwrap();
-        });
-        let job_waiter = tokio::spawn(fast_mode(stop_receiver));
-        // fast 模式的任务会结束, 所以需要等待任务结束
-        job_waiter.await??;
-        let _ = stop_waiter.await;
+        job_waiter = tokio::spawn(fast_mode(stop_receiver));
+    } else {
+        event!(
+            Level::ERROR,
+            "{}",
+            "Please use -s or -f to start the program".red()
+        );
+        event!(Level::ERROR, "{}", "Use -s to start serve mode".red());
+        event!(Level::ERROR, "{}", "Use -f to start fast mode".red());
         return Ok(());
     }
-
-    event!(
-        Level::ERROR,
-        "{}",
-        "Please use -s or -f to start the program".red()
-    );
-    event!(Level::ERROR, "{}", "Use -s to start serve mode".red());
-    event!(Level::ERROR, "{}", "Use -f to start fast mode".red());
+    job_waiter.await??;
+    let _ = stop_waiter.await;
     Ok(())
 }

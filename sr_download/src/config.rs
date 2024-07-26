@@ -38,7 +38,7 @@ impl Default for FastSyncConfig {
     fn default() -> Self {
         Self {
             start_id: 76859,
-            end_id: 1321469,
+            end_id: 1321698,
             worker_count: 10,
             worker_size: 10,
         }
@@ -90,9 +90,11 @@ impl ConfigFile {
         std::time::Duration::from_secs_f32(self.sync.max_timeout)
     }
 
-    pub fn read_or_panic() -> Self {
+    /// 自动帮你骂用户了
+    /// 你直接 ? 就行
+    pub fn try_read() -> anyhow::Result<Self> {
         match Self::read_from_file(Path::new("config.toml")) {
-            Ok(conf) => conf,
+            Ok(conf) => Ok(conf),
             Err(e) => {
                 let _ = tracing_subscriber::fmt::try_init();
                 event!(Level::ERROR, "{}", "Please Fix the config.toml file".red());
@@ -104,9 +106,15 @@ impl ConfigFile {
                         "template file like this: {}",
                         toml::to_string(&Self::default()).unwrap()
                     );
-                };
-                panic!("Please Fix the config.toml file");
+                }
+                Err(e)
             }
         }
+    }
+
+    /// 同理, 也帮你骂好了
+    /// 甚至不需要你 ?
+    pub fn read_or_panic() -> Self {
+        Self::try_read().expect("Please Fix the config.toml file")
     }
 }

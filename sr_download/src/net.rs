@@ -1,4 +1,4 @@
-use reqwest::Client;
+use reqwest::{Client, ClientBuilder};
 use std::time::Duration;
 
 use crate::{model::sea_orm_active_enums::SaveType, SaveId};
@@ -67,10 +67,13 @@ impl From<&DownloadFile> for SaveType {
 
 impl Downloader {
     pub fn new(timeout: Duration) -> Self {
-        Self {
-            client: Client::new(),
-            timeout,
-        }
+        let ua = format!("sr_download/{}", env!("CARGO_PKG_VERSION"));
+        let client = ClientBuilder::new()
+            .timeout(timeout)
+            .user_agent(ua)
+            .build()
+            .unwrap();
+        Self { client, timeout }
     }
 
     pub fn as_ship_url(id: SaveId) -> String {

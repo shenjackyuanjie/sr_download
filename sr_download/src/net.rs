@@ -1,7 +1,6 @@
 use reqwest::{Client, ClientBuilder};
-use core::time;
 use std::time::Duration;
-use tracing::{event, Event, Level};
+use tracing::{event, Level};
 
 use crate::{model::sea_orm_active_enums::SaveType, SaveId};
 
@@ -69,8 +68,7 @@ impl From<&DownloadFile> for SaveType {
 impl Downloader {
     pub fn new(timeout: Option<Duration>) -> Self {
         let ua = format!("sr_download/{}", env!("CARGO_PKG_VERSION"));
-        let mut client = ClientBuilder::new()
-            .user_agent(ua);
+        let mut client = ClientBuilder::new().user_agent(ua);
         if let Some(timeout) = timeout {
             client = client.timeout(timeout);
         }
@@ -100,11 +98,7 @@ impl Downloader {
         let _enter = span.enter();
         // 先尝试用 ship 的 API 下载
         let ship_url = Self::as_ship_url(id);
-        let ship_try = self
-            .client
-            .get(&ship_url)
-            .send()
-            .await;
+        let ship_try = self.client.get(&ship_url).send().await;
         event!(Level::DEBUG, "trying to Download as ship {:?}", ship_try);
         if let Ok(ship_try) = ship_try {
             event!(Level::DEBUG, "Download as ship {:?}", ship_try.status());
@@ -121,11 +115,7 @@ impl Downloader {
         }
         // 否则尝试用 save 的 API 下载
         let save_url = Self::as_save_url(id);
-        let save_try = self
-            .client
-            .get(&save_url)
-            .send()
-            .await;
+        let save_try = self.client.get(&save_url).send().await;
         if let Ok(save_try) = save_try {
             if save_try.status().is_success() {
                 if let Ok(body) = save_try.text().await {
@@ -172,7 +162,6 @@ impl Downloader {
         }
         None
     }
-
 }
 
 impl Default for Downloader {

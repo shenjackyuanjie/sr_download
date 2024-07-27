@@ -1,12 +1,13 @@
 use reqwest::{Client, ClientBuilder};
+use core::time;
 use std::time::Duration;
+use tracing::{event, Event, Level};
 
 use crate::{model::sea_orm_active_enums::SaveType, SaveId};
 
 #[derive(Debug, Clone)]
 pub struct Downloader {
     pub client: Client,
-    timeout: Duration,
 }
 
 /// 使用 any 下载下来的文件
@@ -66,14 +67,15 @@ impl From<&DownloadFile> for SaveType {
 }
 
 impl Downloader {
-    pub fn new(timeout: Duration) -> Self {
+    pub fn new(timeout: Option<Duration>) -> Self {
         let ua = format!("sr_download/{}", env!("CARGO_PKG_VERSION"));
-        let client = ClientBuilder::new()
-            .timeout(timeout)
-            .user_agent(ua)
-            .build()
-            .unwrap();
-        Self { client, timeout }
+        let mut client = ClientBuilder::new()
+            .user_agent(ua);
+        if let Some(timeout) = timeout {
+            client = client.timeout(timeout);
+        }
+        let client = client.build().unwrap();
+        Self { client }
     }
 
     pub fn as_ship_url(id: SaveId) -> String {
@@ -94,17 +96,22 @@ impl Downloader {
     /// 如果两个都没下载到，返回 None
     /// 如果下载到了，返回 Some(文件内容)
     pub async fn try_download_as_any(&self, id: SaveId) -> Option<DownloadFile> {
+        let span = tracing::span!(Level::DEBUG, "try_download_as_any", id);
+        let _enter = span.enter();
         // 先尝试用 ship 的 API 下载
         let ship_url = Self::as_ship_url(id);
         let ship_try = self
             .client
             .get(&ship_url)
-            .timeout(self.timeout)
             .send()
             .await;
+        event!(Level::DEBUG, "trying to Download as ship {:?}", ship_try);
         if let Ok(ship_try) = ship_try {
+            event!(Level::DEBUG, "Download as ship {:?}", ship_try.status());
             if ship_try.status().is_success() {
+                event!(Level::DEBUG, "Download as ship {:?}", ship_try);
                 if let Ok(body) = ship_try.text().await {
+                    event!(Level::DEBUG, "get ship body {:?}", body);
                     // 再判空
                     if !(body.is_empty() || body == "0") {
                         return Some(DownloadFile::Ship(body));
@@ -117,7 +124,6 @@ impl Downloader {
         let save_try = self
             .client
             .get(&save_url)
-            .timeout(self.timeout)
             .send()
             .await;
         if let Ok(save_try) = save_try {
@@ -137,7 +143,7 @@ impl Downloader {
     /// 尝试用 ship 的 API 下载文件
     pub async fn download_as_ship(&self, id: SaveId) -> Option<String> {
         let url = Self::as_ship_url(id);
-        let try_res = self.client.get(&url).timeout(self.timeout).send().await;
+        let try_res = self.client.get(&url).send().await;
         if let Ok(try_res) = try_res {
             if try_res.status().is_success() {
                 if let Ok(body) = try_res.text().await {
@@ -154,7 +160,7 @@ impl Downloader {
     /// 尝试用 save 的 API 下载文件
     pub async fn download_as_save(&self, id: SaveId) -> Option<String> {
         let url = Self::as_save_url(id);
-        let try_res = self.client.get(&url).timeout(self.timeout).send().await;
+        let try_res = self.client.get(&url).send().await;
         if let Ok(try_res) = try_res {
             if try_res.status().is_success() {
                 if let Ok(body) = try_res.text().await {
@@ -167,15 +173,11 @@ impl Downloader {
         None
     }
 
-    #[allow(unused)]
-    pub fn set_timeout(&mut self, timeout: Duration) {
-        self.timeout = timeout;
-    }
 }
 
 impl Default for Downloader {
     fn default() -> Self {
-        Self::new(Duration::from_secs(1))
+        Self::new(Some(Duration::from_secs(1)))
     }
 }
 

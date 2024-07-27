@@ -77,6 +77,9 @@ async fn big_worker(
 }
 
 async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
+    let span = tracing::span!(Level::INFO, "serve_mode");
+    let _enter = span.enter();
+
     let conf = config::ConfigFile::try_read()?;
 
     let db_connect = db_part::connect(&conf).await?;
@@ -94,7 +97,7 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     );
 
     let serve_wait_time = conf.serve_duration();
-    let client = net::Downloader::new(conf.net_timeout());
+    let client = net::Downloader::new(None);
 
     let mut waited = false;
     loop {
@@ -166,6 +169,9 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 }
 
 async fn fast_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
+    let span = tracing::span!(Level::INFO, "fast_mode");
+    let _enter = span.enter();
+
     let conf = config::ConfigFile::try_read()?;
 
     let db_connect = db_part::connect(&conf).await?;
@@ -192,7 +198,7 @@ async fn fast_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
             db_connect.close().await?;
             return Ok(());
         }
-        let client = net::Downloader::new(conf.net_timeout());
+        let client = net::Downloader::new(Some(conf.net_timeout()));
         let end = current_id + worker_size;
         works.push(tokio::spawn(big_worker(
             db_connect.clone(),
@@ -210,7 +216,7 @@ async fn fast_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
             return Ok(());
         }
         while current_id < end_id && works.len() < max_works {
-            let client = net::Downloader::new(conf.net_timeout());
+            let client = net::Downloader::new(Some(conf.net_timeout()));
             let end = current_id + worker_size;
             works.push(tokio::spawn(big_worker(
                 db_connect.clone(),
@@ -230,11 +236,19 @@ async fn fast_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    // 判断是否有 -f / -s 参数
+    let args: Vec<String> = std::env::args().collect();
+    if args.contains(&"-d".to_string()) {
+        // debug 模式
+        tracing_subscriber::fmt()
+            .with_max_level(Level::DEBUG)
+            .init();
+    } else {
+        tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    }
     event!(Level::INFO, "Starting srdownload");
 
     // 判断是否有 -f / -s 参数
-    let args: Vec<String> = std::env::args().collect();
     let (stop_sender, stop_receiver) = tokio::sync::oneshot::channel::<()>();
     let stop_waiter = tokio::spawn(async move {
         tokio::signal::ctrl_c()

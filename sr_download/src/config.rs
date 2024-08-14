@@ -114,6 +114,7 @@ impl ConfigFile {
 
     /// 同理, 也帮你骂好了
     /// 甚至不需要你 ?
+    #[allow(unused)]
     pub fn read_or_panic() -> Self {
         Self::try_read().expect("Please Fix the config.toml file")
     }

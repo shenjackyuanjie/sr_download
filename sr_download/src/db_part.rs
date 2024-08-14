@@ -11,6 +11,7 @@ use crate::model;
 use crate::model::sea_orm_active_enums::SaveType;
 use migration::{Migrator, MigratorTrait, SaveId, FULL_DATA_VIEW, TEXT_DATA_MAX_LEN};
 
+#[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct DbData {
     pub text: Option<String>,
@@ -44,6 +45,8 @@ impl From<(model::main_data::Model, model::long_data::Model)> for DbData {
     }
 }
 
+#[allow(unused)]
+/// 我承认, 这玩意大部分没用上(捂脸)
 impl DbData {
     pub fn new(save_id: SaveId, data: String, save_type: SaveType) -> Self {
         let len = data.len() as i64;

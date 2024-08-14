@@ -9,20 +9,20 @@ name = "get-save"
 path = "./src/get-save.rs"
 
 [dependencies]
-reqwest = "0.12.5"
+reqwest = { version = "0.12.5", features = ["rustls-tls", "http2", "charset"], default-features = false}
 tokio = { version = "1.38", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["local-time"] }
 anyhow = { version = "1.0.86", features = ["backtrace"] }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-sea-orm = { version = "0.12.15", features = [
+sea-orm = { version = "1.0.0", features = [
     "sqlx-postgres",
     "runtime-tokio-rustls",
 ] }
 migration = { path = "../migration" }
 
-serde = { version = "1.0.204", features = ["serde_derive"] }
+serde = { version = "1.0", features = ["serde_derive"] }
 toml = "0.8"
 blake3 = "1.5.3"
 futures = "0.3.30"

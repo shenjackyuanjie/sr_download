@@ -63,17 +63,62 @@
             /* 添加边框 */
             padding: 2px;
             /* 添加内边距 */
+            background-color: #343942ba;
+            /* 浅灰色背景 */
+            color: #fff;
         }
 
         .spacer {
             height: 40px;
             /* 设置行间距 */
         }
+
+        .input-section {
+            flex-basis: 50%;
+            /* 占满宽度 */
+            padding: 20px;
+            border: 2px solid #000;
+            text-align: center;
+            font-size: 24px;
+            background-color: #FFCDD2;
+            /* 淡蓝色 */
+        }
+
+        .input-section input {
+            padding: 10px;
+            font-size: 18px;
+            margin-right: 10px;
+        }
+
+        .input-section button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #b3ffe8;
+            /* 淡蓝色 */
+            border: none;
+            cursor: pointer;
+        }
+
+        .input-section button:hover {
+            background-color: #90CAF9;
+            /* 深蓝色 */
+        }
+
+        .result-display {
+            flex-basis: 100%;
+            /* 占满宽度 */
+            padding: 20px;
+            border: 2px solid #000;
+            text-align: center;
+            font-size: 24px;
+            background-color: #E1BEE7;
+            /* 淡紫色 */
+        }
     </style>
 </head>
 
 <body>
-    <div class="spacer"></div> <!-- 添加空白元素 -->
+    <div class="spacer"></div>
     <div class="container">
         <div class="box2">
             <div class="title">最新数据</div>
@@ -83,7 +128,7 @@
             <div>blake hash: <span class="monospace">|MAX_HASH|</span></div>
         </div>
     </div>
-    <div class="spacer"></div> <!-- 添加空白元素 -->
+    <div class="spacer"></div>
     <div class="container">
         <div class="box">
             <div class="title">最新飞船</div>
@@ -98,6 +143,66 @@
             <div>blake hash: <span class="monospace">|MAX_SAVE_HASH|</span></div>
         </div>
     </div>
+    <div class="spacer"></div>
+    <div class="container">
+        <div class="input-section">
+            <input type="number" id="dataId" placeholder="输入ID">
+            <button onclick="fetchData()">获取数据</button>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="container">
+        <div class="result-display">
+            <div class="title">请求结果</div>
+        </div>
+    </div>
+
+    <script>
+        function fetchData() {
+            // 获取输入框中的 ID
+            const dataId = document.getElementById('dataId').value;
+            if (!dataId) {
+                alert('请输入 ID');
+                return;
+            }
+            if (dataId < 76858) {
+                alert('ID 不能小于 76858 (这个是目前最小的 ID)');
+                return;
+            }
+            // 发送请求
+            fetch(`/info/${dataId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // 获取结果显示区域
+                    const resultDisplay = document.querySelector('.result-display');
+                    // 清空结果显示区域
+                    resultDisplay.innerHTML = '';
+                    // 创建结果显示区域的元素
+                    const resultTitle = document.createElement('div');
+                    resultTitle.classList.add('title');
+                    resultTitle.innerText = '请求结果';
+                    resultDisplay.appendChild(resultTitle);
+                    // 先判断数据拿没拿到
+                    if (data["code"] != 200) {
+                        // 没拿到
+                        const resultContent = document.createElement('div');
+                        resultContent.innerText = data["msg"];
+                        resultDisplay.appendChild(resultContent);
+                    } else {
+                        // 拿到了
+                        // 创建结果显示区域的元素
+                        const resultContent = document.createElement('div');
+                        const inner_data = data["data"];
+                        // 添加数据
+                        resultContent.innerHTML = `<div>id: ${inner_data["save_id"]}</div>
+                        <div>类型: ${inner_data["save_type"]}</div>
+                        <div>长度: ${inner_data["len"]}</div>
+                        <div>blake hash: <span class="monospace">${inner_data["blake_hash"]}</span></div>`;
+                        resultDisplay.appendChild(resultContent);
+                    }
+                });
+        }
+    </script>
 </body>
 
 </html>

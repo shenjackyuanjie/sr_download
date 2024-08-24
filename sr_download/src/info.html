@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sr-download 信息页面</title>
+    <style>
+        body {
+            background-color: #F5F5F5FF;
+            font-family: sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            gap: 20px;
+            width: 80%;
+            margin: 0 auto;
+        }
+
+        .box {
+            width: 70%;
+            padding: 20px;
+            border: 2px solid #000;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .box:nth-child(1) {
+            background-color: #FFE0B2;
+            /* 淡橙色 */
+        }
+
+        .box:nth-child(2) {
+            background-color: #C8E6C9;
+            /* 淡绿色 */
+        }
+
+        .box2 {
+            width: 70%;
+            padding: 20px;
+            border: 2px solid #000;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .box2:nth-child(1) {
+            background-color: #BBDEFB;
+            /* 淡蓝色 */
+        }
+
+        .title {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .box div {
+            word-wrap: break-word;
+            /* 启用自动换行 */
+        }
+
+        .monospace {
+            font-family: monospace;
+            /* 启用等宽字体 */
+            border: 1px solid #000;
+            /* 添加边框 */
+            padding: 2px;
+            /* 添加内边距 */
+        }
+        .spacer {
+            height: 40px; /* 设置行间距 */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="box2">
+            <div class="title">最新数据</div>
+            <div>最大 id: |MAX_ID|</div>
+            <div>类型: |MAX_SAVE_TYPE|</div>
+            <div>长度: |MAX_LEN|</div>
+            <div>blake hash: <span class="monospace">|MAX_HASH|</span></div>
+        </div>
+    </div>
+    <div class="spacer"></div> <!-- 添加空白元素 -->
+    <div class="container">
+        <div class="box">
+            <div class="title">最新飞船</div>
+            <div>最大飞船 id: |MAX_SHIP_ID|</div>
+            <div>长度: |MAX_SHIP_LEN|</div>
+            <div>blake hash: <span class="monospace">|MAX_SHIP_HASH|</span></div>
+        </div>
+        <div class="box">
+            <div class="title">最新存档</div>
+            <div>最大存档 id: |MAX_SAVE_ID|</div>
+            <div>长度: |MAX_SAVE_LEN|</div>
+            <div>blake hash: <span class="monospace">|MAX_SAVE_HASH|</span></div>
+        </div>
+    </div>
+</body>
+
+</html>

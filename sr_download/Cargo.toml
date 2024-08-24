@@ -1,6 +1,6 @@
 [package]
 name = "sr_download"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 default-run = "sr_download"
 
@@ -8,14 +8,24 @@ default-run = "sr_download"
 name = "get-save"
 path = "./src/get-save.rs"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-reqwest = { version = "0.12.5", features = ["rustls-tls", "http2", "charset"], default-features = false}
-tokio = { version = "1.38", features = ["full"] }
+# rustls 大法好!(默认使用 rustls, 用于 musl 环境)
+reqwest = { version = "0.12.7", features = [
+    "rustls-tls",
+    "http2",
+    "charset",
+], default-features = false }
+
+colored = "2.1.0"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["local-time"] }
-anyhow = { version = "1.0.86", features = ["backtrace"] }
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+futures = "0.3.30"
+tokio = { version = "1.38", features = ["full"] }
+anyhow = { version = "1.0.86", features = ["backtrace"] }
+
+axum = "0.7.5"
 sea-orm = { version = "1.0.0", features = [
     "sqlx-postgres",
     "runtime-tokio-rustls",
@@ -24,6 +34,5 @@ migration = { path = "../migration" }
 
 serde = { version = "1.0", features = ["serde_derive"] }
 toml = "0.8"
-blake3 = "1.5.3"
-futures = "0.3.30"
-colored = "2.1.0"
+blake3 = "1.5.4"
+quick-xml = { version = "0.36.1", features = ["async-tokio", "serialize"] }

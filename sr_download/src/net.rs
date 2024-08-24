@@ -65,9 +65,11 @@ impl From<&DownloadFile> for SaveType {
     }
 }
 
+pub const EDGE_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0";
+
 impl Downloader {
     pub fn new(timeout: Option<Duration>) -> Self {
-        let ua = format!("sr_download/{}", env!("CARGO_PKG_VERSION"));
+        let ua = format!("{} sr_download/{}", EDGE_UA, env!("CARGO_PKG_VERSION"));
         let mut client = ClientBuilder::new().user_agent(ua);
         if let Some(timeout) = timeout {
             client = client.timeout(timeout);

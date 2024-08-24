@@ -169,6 +169,16 @@ async fn jump_to_dashboard(Path(path): Path<String>) -> impl IntoResponse {
     )
 }
 
+async fn jump_to_dashboard_from_root() -> impl IntoResponse {
+    (
+        StatusCode::MOVED_PERMANENTLY,
+        Html(
+            "<h1>Jumping from / to /dashboard</h1><script>location.href='/dashboard'</script>"
+                .to_string(),
+        ),
+    )
+}
+
 /// 下面这段话是用于喂给 GitHub Copilot 让他帮我生成一个好用的 info 页面的 prompt
 /// 页面背景 F5F5F5FF
 /// 页面标题为 "sr-download 信息页面"
@@ -247,7 +257,10 @@ pub async fn web_main() -> anyhow::Result<()> {
         // 其他所有路径, 直接跳转到 info 页面
         .route("/*path", get(jump_to_dashboard).post(jump_to_dashboard))
         // 包括根路径
-        .route("/", get(jump_to_dashboard).post(jump_to_dashboard))
+        .route(
+            "/",
+            get(jump_to_dashboard_from_root).post(jump_to_dashboard_from_root),
+        )
         // db
         .with_state(db);
 

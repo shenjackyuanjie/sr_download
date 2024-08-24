@@ -163,7 +163,7 @@ async fn jump_to_info(Path(path): Path<String>) -> impl IntoResponse {
     (
         StatusCode::MOVED_PERMANENTLY,
         Html(format!(
-            "<h1>Jumping from {} to /info</h1><script>location.href='/info'</script>",
+            "<h1>Jumping from {} to /dashboard</h1><script>location.href='/dashboard'</script>",
             path
         )),
     )
@@ -183,7 +183,7 @@ async fn jump_to_info(Path(path): Path<String>) -> impl IntoResponse {
 /// 框上面分别是 "最新数据" "最新飞船" "最新存档" 的标题
 const INFO_PAGE: &str = include_str!("info.html");
 
-async fn info_page(State(db): State<DatabaseConnection>) -> Html<String> {
+async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     let max_id = db_part::find_max_id(&db).await;
     let max_id_data = db_part::get_raw_data(max_id, &db).await.unwrap();
     let max_ship = db_part::find_max_ship(&db).await;
@@ -243,7 +243,7 @@ pub async fn web_main() -> anyhow::Result<()> {
         // 获取下载指定 id 的数据
         .route("/download/:id", get(get_data_by_id).post(get_data_by_id))
         // info 页面
-        .route("/info", get(info_page).post(info_page))
+        .route("/dashboard", get(dashboard_page).post(dashboard_page))
         // 其他所有路径, 直接跳转到 info 页面
         .route("/*path", get(jump_to_info).post(jump_to_info))
         // db

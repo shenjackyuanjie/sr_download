@@ -10,7 +10,7 @@ Rewritten in Rust !
 
 现在支持提供 api 了
 
-具体 API 请参考 [这个页面](./api.md)
+具体 API 请参考 [这个页面](./pages.md)
 
 ## V1
 

@@ -2,7 +2,7 @@ use axum::{extract::State, routing::get, Json, Router};
 use sea_orm::{ActiveEnum, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 
-use crate::{config::ConfigFile, db_part};
+use crate::db_part;
 use migration::SaveId;
 
 /// 最后一个数据的信息
@@ -79,7 +79,7 @@ async fn get_last_ship(State(db): State<DatabaseConnection>) -> Json<Option<Last
 
 pub async fn web_main() -> anyhow::Result<()> {
     let conf = crate::config::ConfigFile::try_read()?;
-    
+
     let listener = tokio::net::TcpListener::bind(conf.serve.host_with_port.clone()).await?;
     let db = db_part::connect_server(&conf).await?;
     let app = Router::new()

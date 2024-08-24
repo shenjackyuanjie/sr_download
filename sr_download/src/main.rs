@@ -114,8 +114,10 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
             event!(Level::INFO, "{}", "结束下载!".yellow());
             // 结束 db
             db_connect.close().await?;
-            if conf.serve.enable && web_waiter.is_some() {
-                web_waiter.unwrap().abort();
+            if conf.serve.enable {
+                if let Some(web_waiter) = web_waiter {
+                    web_waiter.abort();
+                }
             }
             return Ok(());
         }

@@ -158,7 +158,7 @@ async fn get_data_by_id(
     }
 }
 
-async fn jump_to_info(Path(path): Path<String>) -> impl IntoResponse {
+async fn jump_to_dashboard(Path(path): Path<String>) -> impl IntoResponse {
     // html jump
     (
         StatusCode::MOVED_PERMANENTLY,
@@ -245,7 +245,9 @@ pub async fn web_main() -> anyhow::Result<()> {
         // info 页面
         .route("/dashboard", get(dashboard_page).post(dashboard_page))
         // 其他所有路径, 直接跳转到 info 页面
-        .route("/*path", get(jump_to_info).post(jump_to_info))
+        .route("/*path", get(jump_to_dashboard).post(jump_to_dashboard))
+        // 包括根路径
+        .route("/", get(jump_to_dashboard).post(jump_to_dashboard))
         // db
         .with_state(db);
 

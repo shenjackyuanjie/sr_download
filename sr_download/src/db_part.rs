@@ -1,4 +1,5 @@
 use blake3::Hasher;
+use colored::Colorize;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
     DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, QuerySelect,
@@ -83,9 +84,22 @@ pub async fn connect(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
     opt.max_connections(conf.db.max_connections)
         .set_schema_search_path(conf.db.schema.clone())
         .sqlx_logging(conf.db.sqlx_logging);
-    event!(Level::INFO, "Connecting to database");
+    event!(Level::INFO, "正在连接数据库");
     let db: DatabaseConnection = Database::connect(opt).await?;
     db.ping().await?;
+    event!(Level::INFO, "{}", "已经连接数据库".blue());
+    Ok(db)
+}
+
+pub async fn connect_server(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
+    let mut opt = ConnectOptions::new(conf.db.url.clone());
+    opt.max_connections(conf.serve.db_max_connect)
+        .set_schema_search_path(conf.db.schema.clone())
+        .sqlx_logging(conf.db.sqlx_logging);
+    event!(Level::INFO, "服务器正在连接数据库");
+    let db: DatabaseConnection = Database::connect(opt).await?;
+    db.ping().await?;
+    event!(Level::INFO, "{}", "服务器已经连接数据库".blue());
     Ok(db)
 }
 
@@ -96,6 +110,7 @@ pub async fn migrate(db: &DatabaseConnection) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 找到最大的数据的 id
 pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
     // SELECT save_id from main_data ORDER BY save_id DESC LIMIT 1
     // 我丢你老母, 有这时间写这个, 我都写完 sql 语句了
@@ -117,6 +132,40 @@ pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
         Err(e) => {
             event!(Level::WARN, "Error when find_max_id: {:?}", e);
             0
+        }
+    }
+}
+
+/// 找到最大的存档
+pub async fn find_max_save(db: &DatabaseConnection) -> Option<DbData> {
+    // SELECT * from main_data ORDER BY save_id DESC WHERE save_type = save LIMIT 1
+    let data = model::main_data::Entity::find()
+        .order_by_desc(model::main_data::Column::SaveId)
+        .filter(model::main_data::Column::SaveType.eq(SaveType::Save))
+        .one(db)
+        .await;
+    match data {
+        Ok(model) => model.map(|model| model.into()),
+        Err(e) => {
+            event!(Level::WARN, "Error when find_max_save: {:?}", e);
+            None
+        }
+    }
+}
+
+/// 找到最大的飞船
+pub async fn find_max_ship(db: &DatabaseConnection) -> Option<DbData> {
+    // SELECT * from main_data ORDER BY save_id DESC WHERE save_type = ship LIMIT 1
+    let data = model::main_data::Entity::find()
+        .order_by_desc(model::main_data::Column::SaveId)
+        .filter(model::main_data::Column::SaveType.eq(SaveType::Ship))
+        .one(db)
+        .await;
+    match data {
+        Ok(model) => model.map(|model| model.into()),
+        Err(e) => {
+            event!(Level::WARN, "Error when find_max_ship: {:?}", e);
+            None
         }
     }
 }

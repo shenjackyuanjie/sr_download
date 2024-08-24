@@ -103,11 +103,15 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let mut waited = false;
     // 开始等待的时间
     let mut start_wait_time = tokio::time::Instant::now();
+
+    let web_waiter = tokio::spawn(serve::web_main(conf));
+
     loop {
         if stop_receiver.try_recv().is_ok() {
             event!(Level::INFO, "{}", "结束下载!".yellow());
             // 结束 db
             db_connect.close().await?;
+            web_waiter.abort();
             return Ok(());
         }
 

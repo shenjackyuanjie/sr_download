@@ -13,3 +13,8 @@ start_id = 76859
 end_id = 1321698
 worker_count = 10
 worker_size = 10
+
+[serve]
+host_with_port = "0.0.0.0:10002"
+db_max_connect = 10
+enable = false

@@ -87,6 +87,11 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     db_part::migrate(&db_connect).await?;
     let mut db_max_id = db_part::find_max_id(&db_connect).await;
 
+    let mut web_waiter = None;
+    if conf.serve.enable {
+        web_waiter = Some(tokio::spawn(serve::web_main()));
+    }
+
     event!(
         Level::INFO,
         "{}",
@@ -104,14 +109,14 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     // 开始等待的时间
     let mut start_wait_time = tokio::time::Instant::now();
 
-    let web_waiter = tokio::spawn(serve::web_main(conf));
-
     loop {
         if stop_receiver.try_recv().is_ok() {
             event!(Level::INFO, "{}", "结束下载!".yellow());
             // 结束 db
             db_connect.close().await?;
-            web_waiter.abort();
+            if conf.serve.enable && web_waiter.is_some() {
+                web_waiter.unwrap().abort();
+            }
             return Ok(());
         }
 

@@ -77,7 +77,9 @@ async fn get_last_ship(State(db): State<DatabaseConnection>) -> Json<Option<Last
     Json(LastShip::from_db(&db).await)
 }
 
-pub async fn web_main(conf: ConfigFile) -> anyhow::Result<()> {
+pub async fn web_main() -> anyhow::Result<()> {
+    let conf = crate::config::ConfigFile::try_read()?;
+    
     let listener = tokio::net::TcpListener::bind(conf.serve.host_with_port.clone()).await?;
     let db = db_part::connect_server(&conf).await?;
     let app = Router::new()

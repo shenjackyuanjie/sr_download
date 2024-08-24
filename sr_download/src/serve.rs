@@ -5,6 +5,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
+use reqwest::header;
 use sea_orm::{ActiveEnum, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 
@@ -233,6 +234,12 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     Html(page_content)
 }
 
+const FAVICON_FILE: &[u8] = include_bytes!("favicon.ico");
+
+async fn favicon() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "image/x-icon")], FAVICON_FILE)
+}
+
 pub async fn web_main() -> anyhow::Result<()> {
     let conf = crate::config::ConfigFile::try_read()?;
 
@@ -254,6 +261,8 @@ pub async fn web_main() -> anyhow::Result<()> {
         .route("/download/:id", get(get_data_by_id).post(get_data_by_id))
         // info 页面
         .route("/dashboard", get(dashboard_page).post(dashboard_page))
+        // favicon
+        .route("/favicon.ico", get(favicon).post(favicon))
         // 其他所有路径, 直接跳转到 info 页面
         .route("/*path", get(jump_to_dashboard).post(jump_to_dashboard))
         // 包括根路径

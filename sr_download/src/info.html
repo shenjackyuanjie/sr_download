@@ -16,17 +16,18 @@
             -ms-flex-direction: row;
             flex-direction: row;
             justify-content: center;
-            gap: 20px;
-            width: 80%;
+            gap: 10px;
+            width: 100%;
             margin: 0 auto;
         }
 
-        .box {
-            width: 80%;
-            padding: 40px;
+        .box, .box2 {
+            width: 40%;
+            padding: 20px;
+            flex-basis: 100%;
             border: 2px solid #000;
             text-align: center;
-            font-size: 24px;
+            font-size: medium;
         }
 
         .box:nth-child(1) {
@@ -39,21 +40,13 @@
             /* 淡绿色 */
         }
 
-        .box2 {
-            width: 90%;
-            padding: 20px;
-            border: 2px solid #000;
-            text-align: center;
-            font-size: 24px;
-        }
-
         .box2:nth-child(1) {
             background-color: #BBDEFB;
             /* 淡蓝色 */
         }
 
         .title {
-            font-size: 40px;
+            font-size: 30px;
             margin-bottom: 10px;
         }
 
@@ -61,26 +54,24 @@
             font-family: monospace;
             /* 启用等宽字体 */
             border: 1px solid #000;
-            /* 添加边框 */
             padding: 2px;
-            /* 添加内边距 */
-            background-color: #343942ba;
-            /* 浅灰色背景 */
-            color: #fff;
+            background-color: #F5F5F5;
+            word-wrap: break-word;
+            font-size: small;
         }
 
         .spacer {
-            height: 40px;
+            height: 30px;
             /* 设置行间距 */
         }
 
         .input-section {
-            flex-basis: 50%;
+            flex-basis: 100%;
             /* 占满宽度 */
             padding: 20px;
             border: 2px solid #000;
             text-align: center;
-            font-size: 24px;
+            font-size: 18px;
             background-color: #FFCDD2;
             /* 淡蓝色 */
         }

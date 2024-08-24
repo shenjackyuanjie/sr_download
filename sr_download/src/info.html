@@ -2,8 +2,8 @@
 <html lang="zh-cn">
 
 <head>
-    <meta charset="UTF-8">
-    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>sr-download 信息页面</title>
     <style>
         body {
@@ -13,6 +13,7 @@
 
         .container {
             display: flex;
+            -ms-flex-direction: row;
             flex-direction: row;
             justify-content: center;
             gap: 20px;
@@ -147,7 +148,7 @@
     <div class="container">
         <div class="input-section">
             <input type="number" id="dataId" placeholder="输入ID">
-            <button onclick="fetchData()">获取数据</button>
+            <button type="button" onclick="fetchData()">获取数据</button>
         </div>
     </div>
     <div class="spacer"></div>

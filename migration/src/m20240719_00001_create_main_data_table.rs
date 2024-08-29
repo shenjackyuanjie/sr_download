@@ -59,6 +59,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(MainData::BlakeHash).char_len(64).not_null())
                     .col(ColumnDef::new(MainData::Len).big_integer().not_null())
                     .col(ColumnDef::new(MainData::ShortData).string_len(TEXT_DATA_MAX_LEN as u32))
+                    .col(ColumnDef::new(MainData::XmlTested).boolean().null())
                     .to_owned(),
             )
             .await?;
@@ -94,4 +95,6 @@ pub enum MainData {
     /// 如果长度 < 1024
     /// 那就直接存在这
     ShortData,
+    /// 数据是不是合法的 XML 数据
+    XmlTested,
 }

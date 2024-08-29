@@ -12,6 +12,7 @@ pub struct Model {
     pub blake_hash: String,
     pub len: i64,
     pub short_data: Option<String>,
+    pub xml_tested: Option<bool>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

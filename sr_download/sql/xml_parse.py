@@ -17,32 +17,65 @@ def get_db():
     )
     return connect
 
+def fetch_data(db_cur, offset, limit):
+    # xml_fetch = f"""
+    # WITH data AS (
+    #     SELECT save_id as id, data
+    #     FROM public.full_data
+    #     WHERE "save_type" != 'none'
+    #       AND xml_is_well_formed_document(full_data."data")
+    #     LIMIT {limit} OFFSET {offset}
+    # )
+    # SELECT data.id, string_agg(parts.part_type, '|') AS part_types
+    # FROM data,
+    #      XMLTABLE (
+    #         '//Ship/Parts/Part'
+    #         PASSING BY VALUE xmlparse(document data."data")
+    #         COLUMNS part_type text PATH '@partType',
+    #                 part_id text PATH '@id'
+    #     ) AS parts
+    # GROUP BY data.id;
+    # """
+    xml_fetch = f"""
+    WITH data AS (
+        SELECT save_id as id, data
+        FROM public.full_data
+        WHERE "save_type" != 'none'
+          AND xml_is_well_formed_document(full_data."data")
+        LIMIT {limit} OFFSET {offset}
+    ),
+    parts_data AS (
+        SELECT data.id, parts.part_type
+        FROM data,
+             XMLTABLE (
+                '//Ship/Parts/Part'
+                PASSING BY VALUE xmlparse(document data."data")
+                COLUMNS part_type text PATH '@partType',
+                        part_id text PATH '@id'
+            ) AS parts
+    )
+    SELECT id, string_agg(part_type || ':' || part_count, '|') AS part_types
+    FROM (
+        SELECT id, part_type, COUNT(part_type) AS part_count
+        FROM parts_data
+        GROUP BY id, part_type
+    ) AS counted_parts
+    GROUP BY id;
+    """
+    db_cur.execute(xml_fetch)
+    return db_cur.fetchall()
 
 def main():
     db = get_db()
     db_cur = db.cursor()
-
-    xml_fetch = """
-WITH limited_full_data AS (
-    SELECT save_id, data
-    FROM public.full_data
-    WHERE "save_type" != 'none'
-      AND xml_is_well_formed_document(full_data."data")
-    LIMIT 20
-)
-SELECT limited_full_data.save_id, array_agg(x.part_type) AS part_types, array_agg(x.part_id) AS part_ids
-FROM limited_full_data,
-     XMLTABLE (
-        '//Ship/Parts/Part'
-        PASSING BY VALUE xmlparse(document limited_full_data."data")
-        COLUMNS part_type text PATH '@partType',
-                part_id text PATH '@id'
-    ) AS x
-GROUP BY limited_full_data.save_id;
-    """
-
-    db_cur.execute(xml_fetch)
-    logger.info(db_cur.fetchall())
-    ...
+    offset = 0
+    limit = 100
+    while True:
+        datas = fetch_data(db_cur, offset, limit)
+        if not datas:
+            break
+        for data in datas:
+            logger.info(data)
+        offset += limit
 
 main()

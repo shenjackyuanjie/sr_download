@@ -16,6 +16,7 @@ SELECT
 	md.save_id,
 	md.save_type,
 	md.blake_hash,
+    md.xml_tested,
 	md.len,
 	CASE
 		WHEN md.len > 1024 THEN
@@ -51,6 +52,8 @@ impl MigrationTrait for Migration {
             .table(MainData::Table)
             .col(MainData::SaveType)
             .col(MainData::SaveId)
+            .col(MainData::Len)
+            .col(MainData::XmlTested)
             .name(MAIN_SAVETYPE_SAVEID_IDX);
         manager.create_index(savetype_saveid_idx).await?;
 

@@ -195,10 +195,10 @@ async fn jump_to_dashboard_from_root() -> impl IntoResponse {
 const INFO_PAGE: &str = include_str!("info.html");
 
 async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
-    let max_id = db_part::find_max_id(&db).await;
+    let max_id = db_part::search::max_id(&db).await;
     let max_id_data = db_part::get_raw_data(max_id, &db).await.unwrap();
-    let max_ship = db_part::find_max_ship(&db).await;
-    let max_save = db_part::find_max_save(&db).await;
+    let max_ship = db_part::search::max_ship(&db).await;
+    let max_save = db_part::search::max_save(&db).await;
 
     let mut page_content = INFO_PAGE
         .replace("|MAX_ID|", &max_id_data.save_id.to_string())

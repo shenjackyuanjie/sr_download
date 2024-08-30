@@ -11,7 +11,7 @@ pub trait FromDb {
 
 impl FromDb for LastData {
     async fn from_db(db: &DatabaseConnection) -> Option<Self> {
-        let id = db_part::find_max_id(db).await;
+        let id = db_part::search::max_id(db).await;
         let data = db_part::get_raw_data(id, db).await?;
         Some(Self {
             save_id: data.save_id,
@@ -24,7 +24,7 @@ impl FromDb for LastData {
 
 impl FromDb for LastSave {
     async fn from_db(db: &DatabaseConnection) -> Option<Self> {
-        let data = db_part::find_max_save(db).await?;
+        let data = db_part::search::max_save(db).await?;
         Some(Self {
             save_id: data.save_id,
             len: data.len,
@@ -35,7 +35,7 @@ impl FromDb for LastSave {
 
 impl FromDb for LastShip {
     async fn from_db(db: &DatabaseConnection) -> Option<Self> {
-        let data = db_part::find_max_ship(db).await?;
+        let data = db_part::search::max_ship(db).await?;
         Some(Self {
             save_id: data.save_id,
             len: data.len,

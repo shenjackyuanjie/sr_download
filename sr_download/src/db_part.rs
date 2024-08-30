@@ -1,16 +1,18 @@
 use blake3::Hasher;
-use colored::Colorize;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
-    DbErr, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QueryOrder, QuerySelect,
-    Statement, TransactionTrait,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
+    IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
 use tracing::{event, Level};
 
-use crate::config::ConfigFile;
 use crate::model;
 use crate::model::sea_orm_active_enums::SaveType;
-use migration::{Migrator, MigratorTrait, SaveId, FULL_DATA_VIEW, TEXT_DATA_MAX_LEN};
+use migration::{SaveId, FULL_DATA_VIEW, TEXT_DATA_MAX_LEN};
+
+pub mod search;
+pub mod utils;
+
+pub use utils::{connect, connect_server, migrate};
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -79,96 +81,6 @@ impl DbData {
     }
 }
 
-pub async fn connect(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
-    let mut opt = ConnectOptions::new(conf.db.url.clone());
-    opt.max_connections(conf.db.max_connections)
-        .set_schema_search_path(conf.db.schema.clone())
-        .sqlx_logging(conf.db.sqlx_logging);
-    event!(Level::INFO, "正在连接数据库");
-    let db: DatabaseConnection = Database::connect(opt).await?;
-    db.ping().await?;
-    event!(Level::INFO, "{}", "已经连接数据库".blue());
-    Ok(db)
-}
-
-pub async fn connect_server(conf: &ConfigFile) -> anyhow::Result<DatabaseConnection> {
-    let mut opt = ConnectOptions::new(conf.db.url.clone());
-    opt.max_connections(conf.serve.db_max_connect)
-        .set_schema_search_path(conf.db.schema.clone())
-        .sqlx_logging(conf.db.sqlx_logging);
-    event!(Level::INFO, "服务器正在连接数据库");
-    let db: DatabaseConnection = Database::connect(opt).await?;
-    db.ping().await?;
-    event!(Level::INFO, "{}", "服务器已经连接数据库".blue());
-    Ok(db)
-}
-
-pub async fn migrate(db: &DatabaseConnection) -> anyhow::Result<()> {
-    event!(Level::INFO, "Starting migration");
-    Migrator::up(db, None).await?;
-    event!(Level::INFO, "Migration finished");
-    Ok(())
-}
-
-/// 找到最大的数据的 id
-pub async fn find_max_id(db: &DatabaseConnection) -> SaveId {
-    // SELECT save_id from main_data ORDER BY save_id DESC LIMIT 1
-    // 我丢你老母, 有这时间写这个, 我都写完 sql 语句了
-    let data: Result<Option<i32>, DbErr> = model::main_data::Entity::find()
-        .order_by_desc(model::main_data::Column::SaveId)
-        .filter(model::main_data::Column::Len.gt(0))
-        .filter(model::main_data::Column::SaveType.ne(SaveType::None))
-        .select_only()
-        .column(model::main_data::Column::SaveId)
-        .limit(1)
-        .into_tuple()
-        .one(db)
-        .await;
-    match data {
-        Ok(model) => match model {
-            Some(model) => model as SaveId,
-            None => 0,
-        },
-        Err(e) => {
-            event!(Level::WARN, "Error when find_max_id: {:?}", e);
-            0
-        }
-    }
-}
-
-/// 找到最大的存档
-pub async fn find_max_save(db: &DatabaseConnection) -> Option<DbData> {
-    // SELECT * from main_data ORDER BY save_id DESC WHERE save_type = save LIMIT 1
-    let data = model::main_data::Entity::find()
-        .order_by_desc(model::main_data::Column::SaveId)
-        .filter(model::main_data::Column::SaveType.eq(SaveType::Save))
-        .one(db)
-        .await;
-    match data {
-        Ok(model) => model.map(|model| model.into()),
-        Err(e) => {
-            event!(Level::WARN, "Error when find_max_save: {:?}", e);
-            None
-        }
-    }
-}
-
-/// 找到最大的飞船
-pub async fn find_max_ship(db: &DatabaseConnection) -> Option<DbData> {
-    // SELECT * from main_data ORDER BY save_id DESC WHERE save_type = ship LIMIT 1
-    let data = model::main_data::Entity::find()
-        .order_by_desc(model::main_data::Column::SaveId)
-        .filter(model::main_data::Column::SaveType.eq(SaveType::Ship))
-        .one(db)
-        .await;
-    match data {
-        Ok(model) => model.map(|model| model.into()),
-        Err(e) => {
-            event!(Level::WARN, "Error when find_max_ship: {:?}", e);
-            None
-        }
-    }
-}
 
 /// 直接从数据库中查询数据, 这里数据库已经准备好了根据长度区分过的数据
 /// 可以从 full view 里直接选数据
@@ -303,6 +215,7 @@ where
             blake_hash: hash,
             len: data_len as i64,
             short_data: None,
+            xml_tested: None,
         };
         let long_data = model::long_data::Model {
             save_id: save_id as i32,
@@ -321,6 +234,7 @@ where
             blake_hash: hash,
             len: data_len as i64,
             short_data: Some(data),
+            xml_tested: None,
         };
         new_data.into_active_model().insert(db).await?;
     }

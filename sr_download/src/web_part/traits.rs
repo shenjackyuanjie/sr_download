@@ -1,18 +1,13 @@
 use sea_orm::{ActiveEnum, DatabaseConnection};
 
 use super::{LastData, LastSave, LastShip};
-use crate::db_part;
-
-pub trait FromDb {
-    async fn from_db(db: &DatabaseConnection) -> Option<Self>
-    where
-        Self: Sized;
-}
+use crate::db_part::{self, DbData};
+use crate::db_part::utils::FromDb;
 
 impl FromDb for LastData {
     async fn from_db(db: &DatabaseConnection) -> Option<Self> {
         let id = db_part::search::max_id(db).await;
-        let data = db_part::get_raw_data(id, db).await?;
+        let data = DbData::from_db(id, db).await?;
         Some(Self {
             save_id: data.save_id,
             save_type: data.save_type.to_value().to_string(),

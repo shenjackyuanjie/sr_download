@@ -79,26 +79,33 @@ impl DbData {
         let hash = hasher.finalize().to_hex().to_string();
         hash == self.blake_hash
     }
-}
 
-
-/// 直接从数据库中查询数据, 这里数据库已经准备好了根据长度区分过的数据
-/// 可以从 full view 里直接选数据
-pub async fn get_raw_data(save_id: SaveId, db: &DatabaseConnection) -> Option<DbData> {
-    let sql = format!(
-        "SELECT data, save_type::text FROM {} WHERE save_id = {}",
-        FULL_DATA_VIEW, save_id
-    );
-    let datas = db
-        .query_one(Statement::from_string(
-            sea_orm::DatabaseBackend::Postgres,
-            sql,
-        ))
-        .await
-        .ok()??;
-    let text: String = datas.try_get("", "data").ok()?;
-    let save_type: SaveType = datas.try_get("", "save_type").ok()?;
-    Some(DbData::new(save_id, text, save_type))
+    /// 直接从 full_data 里选即可
+    pub async fn from_db(save_id: SaveId, db: &DatabaseConnection) -> Option<Self> {
+        let sql = format!(
+            "SELECT * FROM {} WHERE save_id = {}",
+            FULL_DATA_VIEW, save_id
+        );
+        let datas = db
+            .query_one(Statement::from_string(
+                sea_orm::DatabaseBackend::Postgres,
+                sql,
+            ))
+            .await
+            .ok()??;
+        let text = datas.try_get("", "data").ok()?;
+        let save_id: SaveId = datas.try_get("", "save_id").ok()?;
+        let save_type: SaveType = datas.try_get("", "save_type").ok()?;
+        let len: i64 = datas.try_get("", "len").ok()?;
+        let blake_hash: String = datas.try_get("", "blake_hash").ok()?;
+        Some(Self {
+            text,
+            save_id,
+            save_type,
+            len,
+            blake_hash,
+        })
+    }
 }
 
 pub async fn check_data_len(db: &DatabaseConnection, save_id: SaveId) -> Option<i64> {
@@ -207,6 +214,8 @@ where
         exitst_data.delete(db).await?;
     }
 
+    let xml_tested = Some(utils::verify_xml(&data));
+
     if data_len > TEXT_DATA_MAX_LEN {
         // 过长, 需要把数据放到 long_data 里
         let new_data = model::main_data::Model {
@@ -215,7 +224,7 @@ where
             blake_hash: hash,
             len: data_len as i64,
             short_data: None,
-            xml_tested: None,
+            xml_tested,
         };
         let long_data = model::long_data::Model {
             save_id: save_id as i32,
@@ -234,7 +243,7 @@ where
             blake_hash: hash,
             len: data_len as i64,
             short_data: Some(data),
-            xml_tested: None,
+            xml_tested,
         };
         new_data.into_active_model().insert(db).await?;
     }

@@ -27,6 +27,21 @@ FROM main_data md
 LEFT JOIN long_data ld ON md.save_id = ld.save_id
 "#;
 
+pub const UPDATE_XML_TESTED: &str = "update_xml_tested";
+pub const UPDATE_XML_TESTED_SQL: &str = r#"
+CREATE OR REPLACE FUNCTION update_xml_tested()
+RETURNS VOID AS $$
+BEGIN
+    -- 更新 main_data 表中的 xml_tested 列
+    UPDATE main_data
+    SET xml_tested = xml_is_well_formed_document(fd.data)
+    FROM full_data fd
+    WHERE main_data.save_id = fd.save_id
+      AND main_data.xml_tested IS NULL;
+END;
+$$ LANGUAGE plpgsql;
+"#;
+
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -65,7 +80,9 @@ impl MigrationTrait for Migration {
         manager.create_index(save_type_idx).await?;
 
         let db = manager.get_connection();
-        db.execute_unprepared(FULL_DATA_VIEW_SQL).await?; // 谁管你是什么后端啊, 老子就是 PostgreSQL
+        db.execute_unprepared(FULL_DATA_VIEW_SQL).await?;
+        db.execute_unprepared(UPDATE_XML_TESTED_SQL).await?;
+        // 谁管你是什么后端啊, 老子就是 PostgreSQL
 
         Ok(())
     }

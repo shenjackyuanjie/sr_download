@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
         .ok_or(anyhow::anyhow!("No input"))?
         .parse::<SaveId>()?;
 
-    let data = db_part::get_raw_data(want_get_id, &db)
+    let data = db_part::DbData::from_db(want_get_id, &db)
         .await
         .ok_or(anyhow::anyhow!("No data"))?;
 

@@ -9,12 +9,10 @@ use reqwest::header;
 use sea_orm::{ActiveEnum, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 
-use crate::db_part;
+use crate::db_part::{self, DbData, utils::FromDb};
 use migration::SaveId;
 
 pub mod traits;
-
-use traits::FromDb;
 
 #[derive(Serialize, Deserialize)]
 pub struct WebResponse<T> {
@@ -67,7 +65,7 @@ pub struct LastData {
 
 impl LastData {
     pub async fn from_db_by_id(db: &DatabaseConnection, id: SaveId) -> Option<Self> {
-        let data = db_part::get_raw_data(id, db).await?;
+        let data = DbData::from_db(id, db).await?;
         Some(Self {
             save_id: data.save_id,
             save_type: data.save_type.to_value().to_string(),
@@ -102,7 +100,7 @@ pub struct RawData {
 
 impl RawData {
     pub async fn from_db_by_id(db: &DatabaseConnection, id: SaveId) -> Option<Self> {
-        let data = db_part::get_raw_data(id, db).await?;
+        let data = DbData::from_db(id, db).await?;
         Some(Self {
             info: LastData {
                 save_id: data.save_id,
@@ -196,7 +194,7 @@ const INFO_PAGE: &str = include_str!("info.html");
 
 async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     let max_id = db_part::search::max_id(&db).await;
-    let max_id_data = db_part::get_raw_data(max_id, &db).await.unwrap();
+    let max_id_data = DbData::from_db(max_id, &db).await.unwrap();
     let max_ship = db_part::search::max_ship(&db).await;
     let max_save = db_part::search::max_save(&db).await;
 

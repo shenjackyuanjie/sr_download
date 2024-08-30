@@ -85,6 +85,7 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::migrate(&db_connect).await?;
+    db_part::utils::update_xml_tested(&db_connect).await;
     let mut db_max_id = db_part::search::max_id(&db_connect).await;
 
     let mut web_waiter = None;
@@ -201,6 +202,7 @@ async fn fast_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::migrate(&db_connect).await?;
+    db_part::utils::update_xml_tested(&db_connect).await;
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 

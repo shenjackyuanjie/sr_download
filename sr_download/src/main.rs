@@ -9,7 +9,7 @@ mod db_part;
 #[allow(unused)]
 mod model;
 mod net;
-mod serve;
+mod web_part;
 
 use crate::db_part::CoverStrategy;
 use migration::SaveId;
@@ -89,7 +89,7 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
     let mut web_waiter = None;
     if conf.serve.enable {
-        web_waiter = Some(tokio::spawn(serve::web_main()));
+        web_waiter = Some(tokio::spawn(web_part::web_main()));
     }
 
     event!(

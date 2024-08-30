@@ -3,7 +3,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
     IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
-use tracing::{event, Level};
+// use tracing::{event, Level};
 
 use crate::model;
 use crate::model::sea_orm_active_enums::SaveType;

@@ -27,13 +27,10 @@ def parse_part_types(xml_file):
     tree = ET.parse(xml_file)
     root = tree.getroot()
     
-    # 定义命名空间
-    namespace = {'ns': 'http://shenjack.top:81/files/DR/xsd/partlist.xsd'}
-    
     part_dict = {}
     
     # 遍历所有 PartType 元素
-    for part in root.findall('ns:PartType', namespace):
+    for part in root.findall('PartType'):
         part_id = part.get('id')
         part_mass = float(part.get('mass')) # type: ignore
         part_dict[part_id] = part_mass * 500 # 缩放因子
@@ -48,6 +45,7 @@ WITH data AS (
     WHERE "save_type" = 'ship'
       AND full_data.xml_tested
       AND save_id >= 1200000
+    ORDER BY save_id ASC
     LIMIT {limit} OFFSET {offset}
 ),
 parts_data AS (
@@ -79,11 +77,11 @@ def main():
     
     db = get_db()
     db_cur = db.cursor()
-    offset = 51500
-    limit = 500
+    offset = 0
+    limit = 100
 
     target_mass = 775150
-    delta = 100
+    delta = 10000
 
     start_time = time.time()
 

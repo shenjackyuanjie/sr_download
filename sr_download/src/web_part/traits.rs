@@ -1,8 +1,8 @@
 use sea_orm::{ActiveEnum, DatabaseConnection};
 
 use super::{LastData, LastSave, LastShip};
-use crate::db_part::{self, DbData};
 use crate::db_part::utils::FromDb;
+use crate::db_part::{self, DbData};
 
 impl FromDb for LastData {
     async fn from_db(db: &DatabaseConnection) -> Option<Self> {

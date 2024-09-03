@@ -4,12 +4,12 @@ use std::{io::Write, ops::Range};
 use tokio::sync::oneshot::Receiver;
 use tracing::{event, Level};
 
-mod config;
-mod db_part;
+pub mod config;
+pub mod db_part;
 #[allow(unused)]
-mod model;
-mod net;
-mod web_part;
+pub mod model;
+pub mod net;
+pub mod web_part;
 
 use crate::db_part::CoverStrategy;
 use migration::SaveId;

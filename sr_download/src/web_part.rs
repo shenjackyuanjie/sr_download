@@ -9,7 +9,7 @@ use reqwest::header;
 use sea_orm::{ActiveEnum, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 
-use crate::db_part::{self, DbData, utils::FromDb};
+use crate::db_part::{self, utils::FromDb, DbData};
 use migration::SaveId;
 
 pub mod traits;

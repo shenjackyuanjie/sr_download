@@ -38,7 +38,7 @@ pub async fn migrate(db: &DatabaseConnection) -> anyhow::Result<()> {
 }
 
 /// 更新数据库内所有 xml_tested = null 的数据
-pub async fn update_xml_tested(db: &DatabaseConnection) -> Option<()>{
+pub async fn update_xml_tested(db: &DatabaseConnection) -> Option<()> {
     let sql = r#"SELECT count(1)
 	from full_data
 	where xml_tested is NULL
@@ -49,7 +49,8 @@ pub async fn update_xml_tested(db: &DatabaseConnection) -> Option<()>{
             sea_orm::DatabaseBackend::Postgres,
             sql,
         ))
-        .await.ok()??;
+        .await
+        .ok()??;
     let count: i64 = data.try_get("", "count").ok()?;
     if count == 0 {
         event!(Level::INFO, "无须数据检查");

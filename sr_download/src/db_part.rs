@@ -9,7 +9,7 @@ use crate::model;
 use crate::model::sea_orm_active_enums::SaveType;
 use migration::{SaveId, FULL_DATA_VIEW, TEXT_DATA_MAX_LEN};
 
-pub mod definitions;
+pub mod defines;
 pub mod search;
 pub mod updates;
 pub mod utils;

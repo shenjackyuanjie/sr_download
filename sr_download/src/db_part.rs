@@ -1,8 +1,8 @@
 use blake3::Hasher;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
-    IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
+    ActiveEnum, ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait
 };
+use tracing::{event, Level};
 // use tracing::{event, Level};
 
 use crate::model;
@@ -85,7 +85,7 @@ impl DbData {
     /// 直接从 full_data 里选即可
     pub async fn from_db(save_id: SaveId, db: &DatabaseConnection) -> Option<Self> {
         let sql = format!(
-            "SELECT * FROM {} WHERE save_id = {}",
+            "SELECT save_type::\"varchar\",* FROM {} WHERE save_id = {}",
             FULL_DATA_VIEW, save_id
         );
         let datas = db
@@ -96,14 +96,14 @@ impl DbData {
             .await
             .ok()??;
         let text = datas.try_get("", "data").ok()?;
-        let save_id: SaveId = datas.try_get("", "save_id").ok()?;
-        let save_type: SaveType = datas.try_get("", "save_type").ok()?;
+        let save_id: i32 = datas.try_get("", "save_id").ok()?;
+        let save_type: String = datas.try_get("", "save_type").ok()?;
         let len: i64 = datas.try_get("", "len").ok()?;
         let blake_hash: String = datas.try_get("", "blake_hash").ok()?;
         Some(Self {
             text,
-            save_id,
-            save_type,
+            save_id: save_id as SaveId,
+            save_type: SaveType::try_from_value(&save_type).unwrap(),
             len,
             blake_hash,
         })
@@ -156,6 +156,7 @@ where
     // 干活之前, 先检查一下数据是否已经存在
     // 如果已经存在, 那就根据策略来处理
     let cover_strategy = cover_strategy.unwrap_or_default();
+    let time = chrono::Utc::now();
     let save_type: SaveType = save_type.into();
     let exitst_data: Option<model::main_data::Model> = {
         model::main_data::Entity::find()
@@ -227,6 +228,7 @@ where
             len: data_len as i64,
             short_data: None,
             xml_tested,
+            time: time.into(),
         };
         let long_data = model::long_data::Model {
             save_id: save_id as i32,
@@ -246,6 +248,7 @@ where
             len: data_len as i64,
             short_data: Some(data),
             xml_tested,
+            time: time.into(),
         };
         new_data.into_active_model().insert(db).await?;
     }

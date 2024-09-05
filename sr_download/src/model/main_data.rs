@@ -13,6 +13,7 @@ pub struct Model {
     pub len: i64,
     pub short_data: Option<String>,
     pub xml_tested: Option<bool>,
+    pub time: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

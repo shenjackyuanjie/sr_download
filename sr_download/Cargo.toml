@@ -36,3 +36,4 @@ serde = { version = "1.0", features = ["serde_derive"] }
 toml = "0.8"
 blake3 = "1.5.4"
 quick-xml = { version = "0.36.1", features = ["async-tokio"] }
+chrono = "0.4.38"

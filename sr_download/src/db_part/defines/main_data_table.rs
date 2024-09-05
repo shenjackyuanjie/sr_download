@@ -3,7 +3,7 @@ use sea_orm::{DatabaseBackend, DeriveIden, EnumIter, Iterable, Statement};
 
 use super::TEXT_DATA_MAX_LEN;
 
-pub async fn main_table() -> Statement {
+pub fn main_table() -> Statement {
     let mut table = Table::create();
     table
         .table(MainData::Table)

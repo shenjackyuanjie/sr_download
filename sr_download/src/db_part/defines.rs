@@ -2,8 +2,10 @@ use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
 
 use crate::config::ConfigFile;
 
-pub mod main_data_table;
 pub mod full_data_view;
+pub mod long_data_table;
+pub mod main_data_table;
+pub mod ships_table;
 
 pub mod db_names {
     /// 主数据表
@@ -17,7 +19,6 @@ pub mod db_names {
     /// 老的 sea_orm 的标记表
     pub const SEA_ORM_TABLE: &str = "seaql_migrations";
 }
-
 
 pub const CURRENT_DB_VERSION: i32 = 1;
 

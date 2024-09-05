@@ -21,7 +21,15 @@ pub fn ships_table() -> Statement {
                 .from(Ships::Table, Ships::SaveId)
                 .on_delete(ForeignKeyAction::Cascade)
                 .on_update(ForeignKeyAction::Cascade),
+        )
+        .col(ColumnDef::new(Ships::Mass).big_integer().not_null())
+        .col(ColumnDef::new(Ships::ModUsed).boolean().not_null())
+        .col(
+            ColumnDef::new(Ships::DocxConnectionUsed)
+                .boolean()
+                .not_null(),
         );
+        // .col(ColumnDef::new(Ships::XmlData));
     DatabaseBackend::Postgres.build(&table)
 }
 

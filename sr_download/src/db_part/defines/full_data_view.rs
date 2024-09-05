@@ -8,6 +8,7 @@ SELECT
 	md.blake_hash,
     md.xml_tested,
 	md.len,
+    md.time,
 	CASE
 		WHEN md.len > 1024 THEN
 			ld.text

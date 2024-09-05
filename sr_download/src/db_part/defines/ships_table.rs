@@ -29,7 +29,7 @@ pub fn ships_table() -> Statement {
                 .boolean()
                 .not_null(),
         );
-        // .col(ColumnDef::new(Ships::XmlData));
+    // .col(ColumnDef::new(Ships::XmlData));
     DatabaseBackend::Postgres.build(&table)
 }
 

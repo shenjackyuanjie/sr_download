@@ -194,18 +194,28 @@ const INFO_PAGE: &str = include_str!("info.html");
 
 async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     let max_id = db_part::search::max_id(&db).await;
-    let max_id_data = DbData::from_db(max_id, &db).await.unwrap();
+    let max_id_data = DbData::from_db(max_id, &db).await;
     let max_ship = db_part::search::max_ship(&db).await;
     let max_save = db_part::search::max_save(&db).await;
 
-    let mut page_content = INFO_PAGE
-        .replace("|MAX_ID|", &max_id_data.save_id.to_string())
-        .replace(
-            "|MAX_SAVE_TYPE|",
-            &max_id_data.save_type.to_value().to_string(),
-        )
-        .replace("|MAX_LEN|", &max_id_data.len.to_string())
-        .replace("|MAX_HASH|", &max_id_data.blake_hash);
+    let mut page_content = INFO_PAGE.replace("|MAX_ID|", &max_id.to_string());
+
+    if let Some(max_id_data) = max_id_data {
+        page_content = page_content
+            .replace("|MAX_ID|", &max_id_data.save_id.to_string())
+            .replace(
+                "|MAX_SAVE_TYPE|",
+                &max_id_data.save_type.to_value().to_string(),
+            )
+            .replace("|MAX_LEN|", &max_id_data.len.to_string())
+            .replace("|MAX_HASH|", &max_id_data.blake_hash);
+    } else {
+        page_content = page_content
+            .replace("|MAX_ID|", "not found")
+            .replace("|MAX_SAVE_TYPE|", "not found")
+            .replace("|MAX_LEN|", "not found")
+            .replace("|MAX_HASH|", "not found");
+    }
     if let Some(max_ship) = max_ship {
         page_content = page_content
             .replace("|MAX_SHIP_ID|", &max_ship.save_id.to_string())

@@ -14,10 +14,11 @@ pub mod web_part;
 use crate::db_part::CoverStrategy;
 use migration::SaveId;
 use model::sea_orm_active_enums::SaveType;
+pub use net::Downloader;
 
 async fn big_worker(
     db: sea_orm::DatabaseConnection,
-    client: net::Downloader,
+    client: Downloader,
     work_range: Range<SaveId>,
 ) {
     for work_id in work_range {
@@ -85,6 +86,7 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::migrate(&db_connect).await?;
+    db_part::utils::check_null_data(&db_connect).await;
     db_part::utils::update_xml_tested(&db_connect).await;
     let mut db_max_id = db_part::search::max_id(&db_connect).await;
 
@@ -104,7 +106,7 @@ async fn serve_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     );
 
     let serve_wait_time = conf.serve_duration();
-    let client = net::Downloader::new(None);
+    let client = Downloader::new(None);
 
     let mut waited = false;
     // 开始等待的时间
@@ -202,6 +204,7 @@ async fn fast_mode(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::migrate(&db_connect).await?;
+    db_part::utils::check_null_data(&db_connect).await;
     db_part::utils::update_xml_tested(&db_connect).await;
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;

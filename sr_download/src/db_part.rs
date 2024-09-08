@@ -1,6 +1,7 @@
 use blake3::Hasher;
 use sea_orm::{
-    ActiveEnum, ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait, IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
+    IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
 use tracing::{event, Level};
 // use tracing::{event, Level};
@@ -82,12 +83,20 @@ impl DbData {
         hash == self.blake_hash
     }
 
+    pub fn verify_xml(&self) -> bool {
+        if self.text.is_none() {
+            return false;
+        }
+        utils::verify_xml(self.text.as_ref().unwrap())
+    }
+
     /// 直接从 full_data 里选即可
     pub async fn from_db(save_id: SaveId, db: &DatabaseConnection) -> Option<Self> {
         let sql = format!(
-            "SELECT save_type::\"varchar\",* FROM {} WHERE save_id = {}",
+            r#"SELECT "data","save_id","save_type"::"varchar","len","blake_hash" FROM {} WHERE save_id = {}"#,
             FULL_DATA_VIEW, save_id
         );
+
         let datas = db
             .query_one(Statement::from_string(
                 sea_orm::DatabaseBackend::Postgres,
@@ -97,13 +106,13 @@ impl DbData {
             .ok()??;
         let text = datas.try_get("", "data").ok()?;
         let save_id: i32 = datas.try_get("", "save_id").ok()?;
-        let save_type: String = datas.try_get("", "save_type").ok()?;
+        let save_type: SaveType = datas.try_get("", "save_type").ok()?;
         let len: i64 = datas.try_get("", "len").ok()?;
         let blake_hash: String = datas.try_get("", "blake_hash").ok()?;
         Some(Self {
             text,
             save_id: save_id as SaveId,
-            save_type: SaveType::try_from_value(&save_type).unwrap(),
+            save_type,
             len,
             blake_hash,
         })

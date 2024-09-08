@@ -37,7 +37,8 @@ BEGIN
     SET xml_tested = xml_is_well_formed_document(fd.data)
     FROM full_data fd
     WHERE main_data.save_id = fd.save_id
-      AND main_data.xml_tested IS NULL;
+      AND main_data.xml_tested IS NULL
+      AND fd.data IS NOT NULL;
 END;
 $$ LANGUAGE plpgsql;
 "#;

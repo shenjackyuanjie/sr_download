@@ -8,6 +8,7 @@ use axum::{
 use reqwest::header;
 use sea_orm::{ActiveEnum, DatabaseConnection};
 use serde::{Deserialize, Serialize};
+use tracing::{event, Level};
 
 use crate::db_part::{self, utils::FromDb, DbData};
 use migration::SaveId;
@@ -61,16 +62,19 @@ pub struct LastData {
     pub save_type: String,
     pub len: i64,
     pub blake_hash: String,
+    pub xml_tested: bool,
 }
 
 impl LastData {
     pub async fn from_db_by_id(db: &DatabaseConnection, id: SaveId) -> Option<Self> {
         let data = DbData::from_db(id, db).await?;
+        let xml_tested = data.verify_xml();
         Some(Self {
             save_id: data.save_id,
             save_type: data.save_type.to_value().to_string(),
             len: data.len,
             blake_hash: data.blake_hash,
+            xml_tested,
         })
     }
 }
@@ -81,6 +85,7 @@ pub struct LastSave {
     pub save_id: SaveId,
     pub len: i64,
     pub blake_hash: String,
+    pub xml_tested: bool,
 }
 
 /// 最后一个飞船的信息
@@ -89,6 +94,7 @@ pub struct LastShip {
     pub save_id: SaveId,
     pub len: i64,
     pub blake_hash: String,
+    pub xml_tested: bool,
 }
 
 /// 实际信息
@@ -101,12 +107,14 @@ pub struct RawData {
 impl RawData {
     pub async fn from_db_by_id(db: &DatabaseConnection, id: SaveId) -> Option<Self> {
         let data = DbData::from_db(id, db).await?;
+        let xml_tested = data.verify_xml();
         Some(Self {
             info: LastData {
                 save_id: data.save_id,
                 save_type: data.save_type.to_value().to_string(),
                 len: data.len,
                 blake_hash: data.blake_hash,
+                xml_tested,
             },
             raw_data: data.text?,
         })
@@ -192,6 +200,14 @@ async fn jump_to_dashboard_from_root() -> impl IntoResponse {
 /// 框上面分别是 "最新数据" "最新飞船" "最新存档" 的标题
 const INFO_PAGE: &str = include_str!("info.html");
 
+fn xml_tested_to_str(tested: bool) -> &'static str {
+    if tested {
+        "通过了"
+    } else {
+        "未通过"
+    }
+}
+
 async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     let max_id = db_part::search::max_id(&db).await;
     let max_id_data = DbData::from_db(max_id, &db).await;
@@ -208,35 +224,41 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
                 &max_id_data.save_type.to_value().to_string(),
             )
             .replace("|MAX_LEN|", &max_id_data.len.to_string())
-            .replace("|MAX_HASH|", &max_id_data.blake_hash);
+            .replace("|MAX_HASH|", &max_id_data.blake_hash)
+            .replace("|MAX_XML|", xml_tested_to_str(max_id_data.verify_xml()));
     } else {
         page_content = page_content
             .replace("|MAX_ID|", "not found")
             .replace("|MAX_SAVE_TYPE|", "not found")
             .replace("|MAX_LEN|", "not found")
-            .replace("|MAX_HASH|", "not found");
+            .replace("|MAX_HASH|", "not found")
+            .replace("|MAX_XML|", "not found");
     }
     if let Some(max_ship) = max_ship {
         page_content = page_content
             .replace("|MAX_SHIP_ID|", &max_ship.save_id.to_string())
             .replace("|MAX_SHIP_LEN|", &max_ship.len.to_string())
-            .replace("|MAX_SHIP_HASH|", &max_ship.blake_hash);
+            .replace("|MAX_SHIP_HASH|", &max_ship.blake_hash)
+            .replace("|MAX_SHIP_XML|", xml_tested_to_str(max_ship.verify_xml()));
     } else {
         page_content = page_content
             .replace("|MAX_SHIP_ID|", "not found")
             .replace("|MAX_SHIP_LEN|", "not found")
-            .replace("|MAX_SHIP_HASH|", "not found");
+            .replace("|MAX_SHIP_HASH|", "not found")
+            .replace("|MAX_SHIP_XML|", "not found");
     }
     if let Some(max_save) = max_save {
         page_content = page_content
             .replace("|MAX_SAVE_ID|", &max_save.save_id.to_string())
             .replace("|MAX_SAVE_LEN|", &max_save.len.to_string())
-            .replace("|MAX_SAVE_HASH|", &max_save.blake_hash);
+            .replace("|MAX_SAVE_HASH|", &max_save.blake_hash)
+            .replace("|MAX_SAVE_XML|", xml_tested_to_str(max_save.verify_xml()));
     } else {
         page_content = page_content
             .replace("|MAX_SAVE_ID|", "not found")
             .replace("|MAX_SAVE_LEN|", "not found")
-            .replace("|MAX_SAVE_HASH|", "not found");
+            .replace("|MAX_SAVE_HASH|", "not found")
+            .replace("|MAX_SAVE_XML|", "not found");
     }
 
     Html(page_content)
@@ -281,6 +303,11 @@ pub async fn web_main() -> anyhow::Result<()> {
         // db
         .with_state(db);
 
+    event!(
+        Level::INFO,
+        "Starting web server on http://{}",
+        conf.serve.host_with_port
+    );
     axum::serve(listener, app).await?;
     Ok(())
 }

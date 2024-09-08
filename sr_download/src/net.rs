@@ -54,6 +54,22 @@ impl DownloadFile {
             DownloadFile::Save(_) => "Save",
         }
     }
+    pub fn save_type(&self) -> SaveType {
+        match self {
+            DownloadFile::Ship(_) => SaveType::Ship,
+            DownloadFile::Save(_) => SaveType::Save,
+        }
+    }
+
+    pub fn ref_data(&self) -> &str {
+        match self {
+            DownloadFile::Ship(s) => s,
+            DownloadFile::Save(s) => s,
+        }
+    }
+    pub fn info(&self) -> String {
+        format!("{}: {} bytes", self.type_name(), self.len(),)
+    }
 }
 
 impl From<&DownloadFile> for SaveType {

@@ -18,6 +18,11 @@ pub mod db_names {
     pub const DB_VERSION_TABLE: &str = "db_version";
     /// 老的 sea_orm 的标记表
     pub const SEA_ORM_TABLE: &str = "seaql_migrations";
+
+    /// 更新 xml_tested 的函数
+    pub const UPDATE_XML_TESTED: &str = "update_xml_tested";
+
+    pub type DbSaveId = i32;
 }
 
 /// 当前数据库版本 (用于检查是否需要更新)

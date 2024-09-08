@@ -200,19 +200,14 @@ async fn jump_to_dashboard_from_root() -> impl IntoResponse {
 /// 框上面分别是 "最新数据" "最新飞船" "最新存档" 的标题
 const INFO_PAGE: &str = include_str!("info.html");
 
-fn xml_tested_to_str(tested: bool) -> &'static str {
-    if tested {
-        "通过了"
-    } else {
-        "未通过"
-    }
-}
-
 async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
+    let start_time = std::time::Instant::now();
     let max_id = db_part::search::max_id(&db).await;
     let max_id_data = DbData::from_db(max_id, &db).await;
     let max_ship = db_part::search::max_ship(&db).await;
     let max_save = db_part::search::max_save(&db).await;
+
+    let elapsed = start_time.elapsed();
 
     let mut page_content = INFO_PAGE.replace("|MAX_ID|", &max_id.to_string());
 
@@ -225,7 +220,7 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
             )
             .replace("|MAX_LEN|", &max_id_data.len.to_string())
             .replace("|MAX_HASH|", &max_id_data.blake_hash)
-            .replace("|MAX_XML|", xml_tested_to_str(max_id_data.verify_xml()));
+            .replace("|MAX_XML|", &max_id_data.xml_status());
     } else {
         page_content = page_content
             .replace("|MAX_ID|", "not found")
@@ -239,7 +234,7 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
             .replace("|MAX_SHIP_ID|", &max_ship.save_id.to_string())
             .replace("|MAX_SHIP_LEN|", &max_ship.len.to_string())
             .replace("|MAX_SHIP_HASH|", &max_ship.blake_hash)
-            .replace("|MAX_SHIP_XML|", xml_tested_to_str(max_ship.verify_xml()));
+            .replace("|MAX_SHIP_XML|", &max_ship.xml_status());
     } else {
         page_content = page_content
             .replace("|MAX_SHIP_ID|", "not found")
@@ -252,7 +247,7 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
             .replace("|MAX_SAVE_ID|", &max_save.save_id.to_string())
             .replace("|MAX_SAVE_LEN|", &max_save.len.to_string())
             .replace("|MAX_SAVE_HASH|", &max_save.blake_hash)
-            .replace("|MAX_SAVE_XML|", xml_tested_to_str(max_save.verify_xml()));
+            .replace("|MAX_SAVE_XML|", &max_save.xml_status());
     } else {
         page_content = page_content
             .replace("|MAX_SAVE_ID|", "not found")
@@ -260,6 +255,10 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
             .replace("|MAX_SAVE_HASH|", "not found")
             .replace("|MAX_SAVE_XML|", "not found");
     }
+
+    page_content = page_content
+        .replace("|COST_TIME|", &format!("{:?}", elapsed))
+        .replace("|VERSION|", env!("CARGO_PKG_VERSION"));
 
     Html(page_content)
 }

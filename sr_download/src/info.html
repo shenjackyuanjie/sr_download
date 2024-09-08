@@ -30,21 +30,6 @@
             font-size: medium;
         }
 
-        .box:nth-child(1) {
-            background-color: #FFE0B2;
-            /* 淡橙色 */
-        }
-
-        .box:nth-child(2) {
-            background-color: #C8E6C9;
-            /* 淡绿色 */
-        }
-
-        .box2:nth-child(1) {
-            background-color: #BBDEFB;
-            /* 淡蓝色 */
-        }
-
         .title {
             font-size: 30px;
             margin-bottom: 10px;
@@ -113,7 +98,7 @@
 <body>
     <div class="spacer"></div>
     <div class="container">
-        <div class="box2">
+        <div class="box2" style="background-color: #BBDEFB;">
             <div class="title">最新数据</div>
             <div>最大 id: |MAX_ID|</div>
             <div>类型: |MAX_SAVE_TYPE|</div>
@@ -124,19 +109,27 @@
     </div>
     <div class="spacer"></div>
     <div class="container">
-        <div class="box">
+        <div class="box" style="background-color: #FFE0B2;">
             <div class="title">最新飞船</div>
             <div>最大飞船 id: |MAX_SHIP_ID|</div>
             <div>长度: |MAX_SHIP_LEN|</div>
             <div>xml校验: |MAX_SHIP_XML|</div>
             <div>blake hash: <span class="monospace">|MAX_SHIP_HASH|</span></div>
         </div>
-        <div class="box">
+        <div class="box" style="background-color: #C8E6C9;">
             <div class="title">最新存档</div>
             <div>最大存档 id: |MAX_SAVE_ID|</div>
             <div>长度: |MAX_SAVE_LEN|</div>
             <div>xml校验: |MAX_SAVE_XML|</div>
             <div>blake hash: <span class="monospace">|MAX_SAVE_HASH|</span></div>
+        </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="container">
+        <div class="box" style="background-color: cadetblue;">
+            <div class="title">相关信息</div>
+            <div>请求用时: |COST_TIME|</div>
+            <div>sr-download 版本号: |VERSION|</div>
         </div>
     </div>
     <div class="spacer"></div>

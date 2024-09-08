@@ -1,9 +1,9 @@
 use blake3::Hasher;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
-    IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
+    IntoActiveModel, ModelTrait, QueryFilter, QueryResult, QuerySelect, Statement,
+    TransactionTrait,
 };
-use tracing::{event, Level};
 // use tracing::{event, Level};
 
 use crate::model;
@@ -25,6 +25,7 @@ pub struct DbData {
     pub save_type: SaveType,
     pub len: i64,
     pub blake_hash: String,
+    pub xml_tested: bool,
 }
 
 impl From<model::main_data::Model> for DbData {
@@ -35,6 +36,7 @@ impl From<model::main_data::Model> for DbData {
             save_type: data.save_type,
             len: data.len,
             blake_hash: data.blake_hash,
+            xml_tested: data.xml_tested.unwrap_or(false),
         }
     }
 }
@@ -47,6 +49,7 @@ impl From<(model::main_data::Model, model::long_data::Model)> for DbData {
             save_type: data.0.save_type,
             len: data.0.len,
             blake_hash: data.0.blake_hash,
+            xml_tested: data.0.xml_tested.unwrap_or(false),
         }
     }
 }
@@ -59,12 +62,14 @@ impl DbData {
         let mut hasher = Hasher::new();
         hasher.update(data.as_bytes());
         let hash = hasher.finalize().to_hex().to_string();
+        let xml_tested = utils::verify_xml(&data).is_ok();
         Self {
             text: Some(data),
             save_id,
             save_type,
             len,
             blake_hash: hash,
+            xml_tested,
         }
     }
 
@@ -87,7 +92,20 @@ impl DbData {
         if self.text.is_none() {
             return false;
         }
-        utils::verify_xml(self.text.as_ref().unwrap())
+        utils::verify_xml(self.text.as_ref().unwrap()).is_ok()
+    }
+
+    pub fn xml_status(&self) -> String {
+        if self.xml_tested {
+            return "ok".to_string();
+        }
+        if self.text.is_none() {
+            return "no data".to_string();
+        }
+        if let Err(e) = utils::verify_xml(self.text.as_ref().unwrap()) {
+            return format!("error: {}", e);
+        }
+        "ok".to_string()
     }
 
     /// 直接从 full_data 里选即可
@@ -109,12 +127,14 @@ impl DbData {
         let save_type: SaveType = datas.try_get("", "save_type").ok()?;
         let len: i64 = datas.try_get("", "len").ok()?;
         let blake_hash: String = datas.try_get("", "blake_hash").ok()?;
+        let xml_tested: Option<bool> = datas.try_get("", "xml_tested").ok()?;
         Some(Self {
             text,
             save_id: save_id as SaveId,
             save_type,
             len,
             blake_hash,
+            xml_tested: xml_tested.unwrap_or(false),
         })
     }
 }
@@ -226,7 +246,7 @@ where
         exitst_data.delete(db).await?;
     }
 
-    let xml_tested = Some(utils::verify_xml(&data));
+    let xml_tested = Some(utils::verify_xml(&data).is_ok());
 
     if data_len > TEXT_DATA_MAX_LEN {
         // 过长, 需要把数据放到 long_data 里

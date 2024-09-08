@@ -156,15 +156,15 @@ pub trait FromDb {
 }
 
 /// 校验一下是不是合法 xml
-pub fn verify_xml(data: &str) -> bool {
+pub fn verify_xml(data: &str) -> quick_xml::Result<()> {
     let mut reader = Reader::from_str(data);
     reader.config_mut().trim_text(true);
     loop {
         match reader.read_event() {
             Ok(Event::Eof) => break,
             Ok(_) => (),
-            Err(_) => return false,
+            Err(e) => return Err(e),
         }
     }
-    true
+    Ok(())
 }

@@ -94,14 +94,14 @@ impl Downloader {
         Self { client }
     }
 
-    pub fn as_ship_url(id: SaveId) -> String {
+    pub fn fmt_ship_url(id: SaveId) -> String {
         format!(
             "http://jundroo.com/service/SimpleRockets/DownloadRocket?id={}",
             id
         )
     }
 
-    pub fn as_save_url(id: SaveId) -> String {
+    pub fn fmt_save_url(id: SaveId) -> String {
         format!(
             "http://jundroo.com/service/SimpleRockets/DownloadSandBox?id={}",
             id
@@ -115,7 +115,7 @@ impl Downloader {
         let span = tracing::span!(Level::DEBUG, "try_download_as_any", id);
         let _enter = span.enter();
         // 先尝试用 ship 的 API 下载
-        let ship_url = Self::as_ship_url(id);
+        let ship_url = Self::fmt_ship_url(id);
         let ship_try = self.client.get(&ship_url).send().await;
         event!(Level::DEBUG, "trying to Download as ship {:?}", ship_try);
         if let Ok(ship_try) = ship_try {
@@ -132,7 +132,7 @@ impl Downloader {
             }
         }
         // 否则尝试用 save 的 API 下载
-        let save_url = Self::as_save_url(id);
+        let save_url = Self::fmt_save_url(id);
         let save_try = self.client.get(&save_url).send().await;
         if let Ok(save_try) = save_try {
             if save_try.status().is_success() {
@@ -150,7 +150,7 @@ impl Downloader {
     #[allow(unused)]
     /// 尝试用 ship 的 API 下载文件
     pub async fn download_as_ship(&self, id: SaveId) -> Option<String> {
-        let url = Self::as_ship_url(id);
+        let url = Self::fmt_ship_url(id);
         let try_res = self.client.get(&url).send().await;
         if let Ok(try_res) = try_res {
             if try_res.status().is_success() {
@@ -167,7 +167,7 @@ impl Downloader {
     #[allow(unused)]
     /// 尝试用 save 的 API 下载文件
     pub async fn download_as_save(&self, id: SaveId) -> Option<String> {
-        let url = Self::as_save_url(id);
+        let url = Self::fmt_save_url(id);
         let try_res = self.client.get(&url).send().await;
         if let Ok(try_res) = try_res {
             if try_res.status().is_success() {

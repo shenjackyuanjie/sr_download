@@ -6,7 +6,7 @@ use tracing::{event, Level};
 use crate::{
     config::ConfigFile,
     db_part::{
-        defines::{self, db_names, SaveId},
+        defines::{db_names, SaveId},
         save_data_to_db, CoverStrategy,
     },
     model::sea_orm_active_enums::SaveType,
@@ -64,7 +64,7 @@ pub async fn update_xml_tested(db: &DatabaseConnection) -> Option<()> {
         return Some(());
     }
     event!(Level::INFO, "正在检查 {} 条数据的xml状态", count);
-    let sql = format!("SELECT {}()", defines::db_names::UPDATE_XML_TESTED);
+    let sql = format!("SELECT {}()", db_names::UPDATE_XML_TESTED);
     let stmt = Statement::from_string(sea_orm::DatabaseBackend::Postgres, sql);
     event!(Level::INFO, "正在更新数据库内所有 xml_tested = null 的数据");
     let _ = db.execute(stmt).await;
@@ -77,7 +77,7 @@ pub async fn update_xml_tested(db: &DatabaseConnection) -> Option<()> {
 pub async fn check_null_data(db: &DatabaseConnection) -> Option<()> {
     let sql = format!(
         "SELECT count(1) from {} where data is NULL",
-        defines::db_names::FULL_DATA_TABLE
+        db_names::FULL_DATA_TABLE
     );
     let data = db
         .query_one(Statement::from_string(
@@ -98,7 +98,7 @@ pub async fn check_null_data(db: &DatabaseConnection) -> Option<()> {
     );
     let sql = format!(
         "SELECT save_id from {} where data is NULL",
-        defines::db_names::FULL_DATA_TABLE
+        db_names::FULL_DATA_TABLE
     );
     let stmt = Statement::from_string(sea_orm::DatabaseBackend::Postgres, sql);
     let quert_results = db.query_all(stmt).await.ok()?;

@@ -1,13 +1,12 @@
 use blake3::Hasher;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
-    IntoActiveModel, ModelTrait, QueryFilter, QueryResult, QuerySelect, Statement,
-    TransactionTrait,
+    IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
 // use tracing::{event, Level};
 
 use crate::model;
-use crate::model::sea_orm_active_enums::SaveType;
+pub use crate::model::sea_orm_active_enums::SaveType;
 use migration::{SaveId, FULL_DATA_VIEW, TEXT_DATA_MAX_LEN};
 
 pub mod defines;

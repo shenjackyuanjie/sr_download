@@ -1,4 +1,4 @@
 [workspace]
 resolver = "2"
-members = ["sr_download", "migration", "dashboard"]
+members = ["sr_download", "migration"]
 default-members = ["sr_download"]

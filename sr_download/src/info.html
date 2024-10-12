@@ -172,7 +172,7 @@
                     resultTitle.innerText = '请求结果';
                     resultDisplay.appendChild(resultTitle);
                     // 先判断数据拿没拿到
-                    if (data["code"] != 200) {
+                    if (data["code"] !== 200) {
                         // 没拿到
                         const resultContent = document.createElement('div');
                         resultContent.innerText = data["msg"];

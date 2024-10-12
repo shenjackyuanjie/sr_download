@@ -152,7 +152,7 @@ impl ConfigFile {
                     event!(
                         Level::ERROR,
                         "template file like this: {}",
-                        toml::to_string(&Self::default()).unwrap()
+                        toml::to_string(&Self::default())?
                     );
                 }
                 Err(e)

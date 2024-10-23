@@ -79,9 +79,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let conf = config::ConfigFile::try_read()?;
 
     let db_connect = db_part::connect(&conf).await?;
-    db_part::migrate(&db_connect).await?;
-    db_part::utils::check_null_data(&db_connect).await;
-    db_part::utils::update_xml_tested(&db_connect).await;
+    db_part::full_update(&db_connect, &conf).await;
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 

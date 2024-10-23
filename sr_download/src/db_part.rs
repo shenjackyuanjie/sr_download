@@ -3,9 +3,10 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
     IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
-// use tracing::{event, Level};
+use tracing::{event, Level};
 
 use crate::model;
+use crate::config::ConfigFile;
 pub use crate::model::sea_orm_active_enums::SaveType;
 use migration::{SaveId, FULL_DATA_VIEW, TEXT_DATA_MAX_LEN};
 
@@ -15,6 +16,20 @@ pub mod updates;
 pub mod utils;
 
 pub use utils::{connect, connect_server, migrate};
+
+pub async fn full_update(db: &DatabaseConnection, conf: &ConfigFile) {
+    // sea_orm 的迁移
+    if let Err(e) = migrate(db).await {
+        event!(Level::ERROR, "sea_orm 迁移失败: {:?}", e);
+    };
+    
+    // 自己的迁移
+    updates::update_db(db, conf).await;
+
+    // 数据更新
+    utils::check_null_data(db).await;
+    utils::update_xml_tested(db).await;
+}
 
 #[allow(unused)]
 #[derive(Debug, Clone)]

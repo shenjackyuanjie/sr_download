@@ -93,15 +93,10 @@ async fn async_main(run_mode: RunMode) -> anyhow::Result<()> {
         stop_sender.send(()).unwrap();
     });
 
-    let job_waiter;
-    match run_mode {
-        RunMode::Serve => {
-            job_waiter = tokio::spawn(serve_mode::main(stop_receiver));
-        }
-        RunMode::Fast => {
-            job_waiter = tokio::spawn(fast_mode::main(stop_receiver));
-        }
-    }
+    let job_waiter = match run_mode {
+        RunMode::Serve => tokio::spawn(serve_mode::main(stop_receiver)),
+        RunMode::Fast => tokio::spawn(fast_mode::main(stop_receiver)),
+    };
     job_waiter.await??;
     let _ = stop_waiter.await;
     Ok(())

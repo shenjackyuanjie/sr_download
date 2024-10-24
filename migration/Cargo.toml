@@ -9,10 +9,10 @@ name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
-tokio = { version = "1.38", features = ["full"] }
+tokio = { version = "*", features = ["full"] }
 
 [dependencies.sea-orm-migration]
-version = "1.0.0"
+version = "*"
 features = [
     "runtime-tokio-rustls", # `ASYNC_RUNTIME` feature
     "sqlx-postgres",        # `DATABASE_DRIVER` feature

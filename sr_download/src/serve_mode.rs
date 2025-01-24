@@ -6,7 +6,6 @@ use tracing::{event, Level};
 
 use crate::db_part::{CoverStrategy, SaveType};
 use crate::{config, db_part, web_part, Downloader};
-
 pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let span = tracing::span!(Level::INFO, "serve_mode");
     let _enter = span.enter();
@@ -52,64 +51,61 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
             return Ok(());
         }
 
+        let work_id = db_max_id + 1;
+        if let Some(file) = client.try_download_as_any(work_id).await {
+            if waited {
+                println!();
+                waited = false;
+            }
+            let wait_time = start_wait_time.elapsed();
+            start_wait_time = tokio::time::Instant::now();
+            event!(
+                Level::INFO,
+                "{}",
+                format!(
+                    "下载到了新的 {}!(懒得做中文了) ID为: {} 长度: {}, 等了 {}",
+                    file.type_name(),
+                    work_id,
+                    file.len(),
+                    format!("{:?}", wait_time).blue()
+                )
+                .green()
+            );
+            let save_type: SaveType = (&file).into();
+            match db_part::save_data_to_db(
+                work_id,
+                save_type,
+                file.take_data(),
+                Some(CoverStrategy::CoverIfDifferent),
+                &db_connect,
+            )
+            .await
+            {
+                Ok(_) => {
+                    db_max_id = work_id;
+                    event!(
+                        Level::INFO,
+                        "{}",
+                        format!(
+                            "保存好啦! (下一排的每一个 . 代表一个 {:?})",
+                            serve_wait_time
+                        )
+                        .green()
+                    );
+                }
+                Err(e) => {
+                    event!(Level::ERROR, "呜呜呜, 数据保存失败了: {:?}\n我不玩了!", e);
+                    return Err(e);
+                }
+            }
+            continue; // 保存好之后立即尝试下一次, 保证连续上传的时候的效率
+        }
         tokio::select! {
             _ = tokio::time::sleep(serve_wait_time) => {
-                let work_id = db_max_id + 1;
-                match client.try_download_as_any(work_id).await {
-                    Some(file) => {
-                        if waited {
-                            println!();
-                            waited = false;
-                        }
-                        let wait_time = start_wait_time.elapsed();
-                        start_wait_time = tokio::time::Instant::now();
-                        event!(
-                            Level::INFO,
-                            "{}",
-                            format!(
-                                "下载到了新的 {}!(懒得做中文了) ID为: {} 长度: {}, 等了 {}",
-                                file.type_name(),
-                                work_id,
-                                file.len(),
-                                format!("{:?}", wait_time).blue()
-                            )
-                            .green()
-                        );
-                        let save_type: SaveType = (&file).into();
-                        match db_part::save_data_to_db(
-                            work_id,
-                            save_type,
-                            file.take_data(),
-                            Some(CoverStrategy::CoverIfDifferent),
-                            &db_connect,
-                        )
-                        .await
-                        {
-                            Ok(_) => {
-                                db_max_id = work_id;
-                                event!(
-                                    Level::INFO,
-                                    "{}",
-                                    format!(
-                                        "保存好啦! (下一排的每一个 . 代表一个 {:?})",
-                                        serve_wait_time
-                                    )
-                                    .green()
-                                );
-                                continue; // 保存好之后立即尝试下一次, 保证连续上传的时候的效率
-                            }
-                            Err(e) => {
-                                event!(Level::ERROR, "呜呜呜, 数据保存失败了: {:?}\n我不玩了!", e);
-                                return Err(e);
-                            }
-                        }
-                    }
-                    None => {
-                        print!(".");
-                        waited = true;
-                        let _ = std::io::stdout().flush();
-                    }
-                }
+                print!(".");
+                waited = true;
+                let _ = std::io::stdout().flush();
+                continue;
             }
             _ = &mut stop_receiver => {
                 event!(Level::INFO, "{}", "结束下载!".yellow());

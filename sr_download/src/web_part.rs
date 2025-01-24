@@ -283,11 +283,11 @@ pub async fn web_main() -> anyhow::Result<()> {
         .route("/last/ship", get(get_last_ship).post(get_last_ship))
         // 获取指定 id 的数据(也有可能返回 not found)
         .route(
-            "/info/:id",
+            "/info/{id}",
             get(get_data_info_by_id).post(get_data_info_by_id),
         )
         // 获取下载指定 id 的数据
-        .route("/download/:id", get(get_data_by_id).post(get_data_by_id))
+        .route("/download/{id}", get(get_data_by_id).post(get_data_by_id))
         // info 页面
         .route("/dashboard", get(dashboard_page).post(dashboard_page))
         // favicon
@@ -304,7 +304,7 @@ pub async fn web_main() -> anyhow::Result<()> {
 
     event!(
         Level::INFO,
-        "Starting web server on http://{}",
+        "Starting http server on http://{}",
         conf.serve.host_with_port
     );
     axum::serve(listener, app).await?;

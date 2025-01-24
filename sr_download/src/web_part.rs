@@ -293,7 +293,7 @@ pub async fn web_main() -> anyhow::Result<()> {
         // favicon
         .route("/favicon.ico", get(favicon).post(favicon))
         // 其他所有路径, 直接跳转到 info 页面
-        .route("/*path", get(jump_to_dashboard).post(jump_to_dashboard))
+        .route("/{*path}", get(jump_to_dashboard).post(jump_to_dashboard))
         // 包括根路径
         .route(
             "/",

@@ -357,6 +357,7 @@ pub async fn web_main() -> anyhow::Result<()> {
         .route("/download/{id}", get(get_data_by_id).post(get_data_by_id))
         // info 页面
         .route("/dashboard", get(dashboard_page).post(dashboard_page))
+        .route("/dashboard.html", get(dashboard_page).post(dashboard_page))
         // favicon
         .route("/favicon.ico", get(favicon).post(favicon))
         .route("/assets/info.css", get(info_css).post(info_css))

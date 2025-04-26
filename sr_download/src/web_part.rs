@@ -32,9 +32,24 @@ pub fn web_request_counter_pp() -> u64 {
     WEB_REQUEST_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
 }
 
+/// 获取网页请求计数器
+pub fn web_request_counter() -> u64 {
+    WEB_REQUEST_COUNTER.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 /// 获取API请求计数器, 顺便 +1
 pub fn api_request_counter_pp() -> u64 {
     API_REQUEST_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
+}
+
+/// 获取API请求计数器
+pub fn api_request_counter() -> u64 {
+    API_REQUEST_COUNTER.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// 获取服务开了多久
+pub fn service_uptime() -> std::time::Duration {
+    crate::START_TIME.get().unwrap().elapsed().unwrap()
 }
 
 #[derive(Serialize, Deserialize)]
@@ -144,14 +159,17 @@ impl RawData {
 }
 
 async fn get_last_data(State(db): State<DatabaseConnection>) -> Json<WebResponse<LastData>> {
+    api_request_counter_pp();
     Json(WebResponse::new(LastData::from_db(&db).await))
 }
 
 async fn get_last_save(State(db): State<DatabaseConnection>) -> Json<WebResponse<LastSave>> {
+    api_request_counter_pp();
     Json(WebResponse::new(LastSave::from_db(&db).await))
 }
 
 async fn get_last_ship(State(db): State<DatabaseConnection>) -> Json<WebResponse<LastShip>> {
+    api_request_counter_pp();
     Json(WebResponse::new(LastShip::from_db(&db).await))
 }
 
@@ -159,6 +177,7 @@ async fn get_data_info_by_id(
     State(db): State<DatabaseConnection>,
     Path(raw_id): Path<String>,
 ) -> Json<WebResponse<LastData>> {
+    api_request_counter_pp();
     match raw_id.parse::<SaveId>() {
         Ok(id) => match LastData::from_db_by_id(&db, id).await {
             Some(data) => Json(WebResponse::new_normal(data)),
@@ -175,6 +194,7 @@ async fn get_data_by_id(
     State(db): State<DatabaseConnection>,
     Path(raw_id): Path<String>,
 ) -> Json<WebResponse<RawData>> {
+    api_request_counter_pp();
     match raw_id.parse::<SaveId>() {
         Ok(id) => match RawData::from_db_by_id(&db, id).await {
             Some(data) => Json(WebResponse::new_normal(data)),
@@ -229,8 +249,6 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     let max_ship = db_part::search::max_ship(&db).await;
     let max_save = db_part::search::max_save(&db).await;
 
-    let elapsed = start_time.elapsed();
-
     let mut page_content = INFO_PAGE.replace("|MAX_ID|", &max_id.to_string());
 
     if let Some(max_id_data) = max_id_data {
@@ -278,9 +296,18 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
             .replace("|MAX_SAVE_XML|", "not found");
     }
 
+    let elapsed = start_time.elapsed();
+
+    let web_request_count = web_request_counter_pp();
+    let api_request_count = api_request_counter();
+    let service_uptime = service_uptime();
+
     page_content = page_content
         .replace("|COST_TIME|", &format!("{:?}", elapsed))
-        .replace("|VERSION|", env!("CARGO_PKG_VERSION"));
+        .replace("|VERSION|", env!("CARGO_PKG_VERSION"))
+        .replace("|WEB_REQUEST_COUNT|", &web_request_count.to_string())
+        .replace("|API_REQUEST_COUNT|", &api_request_count.to_string())
+        .replace("|SERVICE_UPTIME|", &humantime::format_duration(service_uptime).to_string());
 
     Html(page_content)
 }

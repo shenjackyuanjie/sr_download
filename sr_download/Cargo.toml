@@ -33,3 +33,4 @@ toml = "0.8"
 blake3 = "1.6"
 quick-xml = { version = "0.37" }
 chrono = "0.4"
+humantime = "2.2"

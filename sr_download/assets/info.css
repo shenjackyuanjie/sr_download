@@ -1,0 +1,383 @@
+:root {
+    /* 明亮主题 */
+    --color-bg-body: #f0f2f5;
+    --color-bg-container: #ffffff;
+    --color-text-primary: #333333;
+    --color-input-bg: #ffffff;
+    --color-input-text: #333333;
+    --color-input-border: #dddddd;
+    --color-button-bg: #007bff;
+    --color-button-hover: #0056b3;
+    --color-error: #ff0000;
+    --color-shadow: rgba(0, 0, 0, 0.1);
+
+    /* 源码来自: icalingua */
+    --chat-color: #0a0a0a;
+    --chat-bg-color-input: #fff;
+    --chat-color-spinner: #333;
+    --chat-color-placeholder: #9ca6af;
+    --chat-color-caret: #1976d2;
+    --chat-border-style: 1px solid #e1e4e8;
+    --chat-bg-scroll-icon: #fff;
+    --chat-container-border: none;
+    --chat-container-border-radius: 0;
+    --chat-container-box-shadow: none;
+    --chat-header-bg-color: #fff;
+    --chat-header-color-name: #0a0a0a;
+    --chat-header-color-info: #9ca6af;
+    --chat-footer-bg-color: #f8f9fa;
+    --chat-border-style-input: 1px solid #e1e4e8;
+    --chat-border-color-input-selected: #1976d2;
+    --chat-footer-bg-color-reply: #e5e5e6;
+    --chat-footer-bg-color-tag-active: #e5e5e6;
+    --chat-content-bg-color: #f8f9fa;
+    --chat-sidemenu-bg-color: #fff;
+    --chat-sidemenu-bg-color-hover: #f6f6f6;
+    --chat-sidemenu-bg-color-active: #e5effa;
+    --chat-sidemenu-color-active: #1976d2;
+    --chat-sidemenu-border-color-search: #e1e5e8;
+
+    --chat-dropdown-bg-color: #fff;
+    --chat-dropdown-bg-color-hover: #f6f6f6;
+
+    --chat-message-bg-color: #fff;
+    --chat-message-bg-color-me: #ccf2cf;
+    --chat-message-color-started: #9ca6af;
+    --chat-message-bg-color-deleted: #dadfe2;
+    --chat-message-bg-color-selected: #c2dcf2;
+    --chat-message-color-deleted: #757e85;
+    --chat-message-color-username: #9ca6af;
+    --chat-message-color-timestamp: #828c94;
+    --chat-message-bg-color-date: #e5effa;
+    --chat-message-color-date: #505a62;
+    --chat-message-bg-color-system: #e5effa;
+    --chat-message-color-system: #505a62;
+    --chat-message-color: #0a0a0a;
+    --chat-message-bg-color-media: rgba(0, 0, 0, 0.15);
+    --chat-message-bg-color-reply: rgba(0, 0, 0, 0.08);
+    --chat-message-color-reply-username: #0a0a0a;
+    --chat-message-color-reply-content: #6e6e6e;
+    --chat-message-color-tag: #0d579c;
+    --chat-message-bg-color-image: #ddd;
+    --chat-message-color-new-messages: #1976d2;
+    --chat-message-bg-color-scroll-counter: #0696c7;
+    --chat-message-color-scroll-counter: #fff;
+    --chat-message-bg-color-reaction: #eee;
+    --chat-message-border-style-reaction: 1px solid #eee;
+    --chat-message-bg-color-reaction-hover: #fff;
+    --chat-message-border-style-reaction-hover: 1px solid #ddd;
+    --chat-message-color-reaction-counter: #0a0a0a;
+    --chat-message-bg-color-reaction-me: #cfecf5;
+    --chat-message-border-style-reaction-me: 1px solid #3b98b8;
+    --chat-message-bg-color-reaction-hover-me: #cfecf5;
+    --chat-message-border-style-reaction-hover-me: 1px solid #3b98b8;
+    --chat-message-color-reaction-counter-me: #0b59b3;
+    --chat-markdown-bg: rgba(239, 239, 239, 0.7);
+    --chat-markdown-border: rgba(212, 212, 212, 0.9);
+    --chat-markdown-color: #e01e5a;
+    --chat-markdown-color-multi: #0a0a0a;
+    --chat-room-color-username: #0a0a0a;
+    --chat-room-color-message: #67717a;
+    --chat-room-color-timestamp: #a2aeb8;
+    --chat-room-color-online: #4caf50;
+    --chat-room-color-offline: #9ca6af;
+    --chat-room-bg-color-badge: #0696c7;
+    --chat-room-color-badge: #fff;
+
+    --chat-emoji-bg-color: #fff;
+
+    --chat-icon-color-search: #9ca6af;
+    --chat-icon-color-add: #1976d2;
+    --chat-icon-color-toggle: #0a0a0a;
+    --chat-icon-color-menu: #0a0a0a;
+    --chat-icon-color-close: #9ca6af;
+    --chat-icon-color-close-image: #fff;
+    --chat-icon-color-file: #1976d2;
+    --chat-icon-color-paperclip: #1976d2;
+    --chat-icon-color-close-outline: #000;
+    --chat-icon-color-send: #1976d2;
+    --chat-icon-color-send-disabled: #9ca6af;
+    --chat-icon-color-emoji: #1976d2;
+    --chat-icon-color-emoji-reaction: rgba(0, 0, 0, 0.3);
+    --chat-icon-color-document: #1976d2;
+    --chat-icon-color-pencil: #9e9e9e;
+    --chat-icon-color-checkmark: #9e9e9e;
+    --chat-icon-color-checkmark-seen: #0696c7;
+    --chat-icon-color-eye: #fff;
+    --chat-icon-color-dropdown-message: #fff;
+    --chat-icon-bg-dropdown-message: rgba(0, 0, 0, 0.25);
+    --chat-icon-color-dropdown-room: #9e9e9e;
+    --chat-icon-color-dropdown-scroll: #0a0a0a;
+    --chat-icon-color-microphone: #1976d2;
+    --chat-icon-color-microphone-off: #eb4034;
+
+    --panel-background: #ffffff;
+    --panel-color-name: #303133;
+    --panel-color-username: #1976d2;
+    --panel-color-icon: #909399;
+    --panel-color-desc: #606266;
+    --panel-color-timestamp: #606266;
+    --panel-item-bg: #e5effa;
+    --panel-item-bg-hover: #f2f6fc;
+    --panel-sidebar-bg: #303133;
+    --panel-header-bg: #fff;
+    --panel-color-sticker-type: #303133;
+    --panel-color-sticker-type-selected: #409eff;
+    --panel-color-sticker-type-hover: #66b1ff;
+    --panel-color-navi-bottom-bar: #E4E7ED;
+}
+
+[data-theme="dark"] {
+    /* 暗黑主题 */
+    --color-bg-body: #121212;
+    --color-bg-container: #1e1e1e;
+    --color-input-border: #3d3d3d;
+    --color-input-bg: #2d2d2d;
+    --color-input-text: #ffffff;
+    --color-text-primary: #e0e0e0;
+    --color-button-bg: #1976d2;
+    --color-button-text: #e0e0e0;
+    --color-button-hover: #115293;
+    --color-error: #ff6b6b;
+    --shadow-default: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --color-text-secondary: #909090;
+    --color-theme-switch-btn-bg: #1e1e1e;
+
+    /* 源码来自: icalingua */
+    --chat-color: #fff;
+    --chat-bg-color-input: #202223;
+    --chat-color-spinner: #fff;
+    --chat-color-placeholder: #596269;
+    --chat-color-caret: #fff;
+    --chat-border-style: none;
+    --chat-bg-scroll-icon: #fff;
+    --chat-container-border: none;
+    --chat-container-border-radius: 0;
+    --chat-container-box-shadow: none;
+    --chat-header-bg-color: #181a1b;
+    --chat-header-color-name: #fff;
+    --chat-header-color-info: #9ca6af;
+    --chat-footer-bg-color: #131415;
+    --chat-border-style-input: none;
+    --chat-border-color-input-selected: #1976d2;
+    --chat-footer-bg-color-reply: #1b1c1c;
+    --chat-footer-bg-color-tag-active: #1b1c1c;
+    --chat-content-bg-color: #131415;
+    --chat-sidemenu-bg-color: #181a1b;
+    --chat-sidemenu-bg-color-hover: #202224;
+    --chat-sidemenu-bg-color-active: #151617;
+    --chat-sidemenu-color-active: #fff;
+    --chat-sidemenu-border-color-search: #181a1b;
+    --chat-dropdown-bg-color: #2a2c33;
+    --chat-dropdown-bg-color-hover: #26282e;
+
+    --chat-message-bg-color: #22242a;
+    --chat-message-bg-color-me: #1f7e80;
+    --chat-message-color-started: #9ca6af;
+    --chat-message-bg-color-deleted: #1b1c21;
+    --chat-message-bg-color-selected: #c2dcf2;
+    --chat-message-color-deleted: #a2a5a8;
+    --chat-message-color-username: #b3bac9;
+    --chat-message-color-timestamp: #ebedf2;
+    --chat-message-bg-color-date: rgba(0, 0, 0, 0.3);
+    --chat-message-color-date: #bec5cc;
+    --chat-message-bg-color-system: rgba(0, 0, 0, 0.3);
+    --chat-message-color-system: #bec5cc;
+    --chat-message-color: #fff;
+    --chat-message-bg-color-media: rgba(0, 0, 0, 0.18);
+    --chat-message-bg-color-reply: rgba(0, 0, 0, 0.18);
+    --chat-message-color-reply-username: #fff;
+    --chat-message-color-reply-content: #d6d6d6;
+    --chat-message-color-tag: #f0c60a;
+    --chat-message-bg-color-image: #ddd;
+    --chat-message-color-new-messages: #fff;
+    --chat-message-bg-color-scroll-counter: #1976d2;
+    --chat-message-color-scroll-counter: #fff;
+    --chat-message-bg-color-reaction: none;
+    --chat-message-border-style-reaction: none;
+    --chat-message-bg-color-reaction-hover: #202223;
+    --chat-message-border-style-reaction-hover: none;
+    --chat-message-color-reaction-counter: #fff;
+    --chat-message-bg-color-reaction-me: #4e9ad1;
+    --chat-message-border-style-reaction-me: none;
+    --chat-message-bg-color-reaction-hover-me: #4e9ad1;
+    --chat-message-border-style-reaction-hover-me: none;
+    --chat-message-color-reaction-counter-me: #fff;
+
+    --chat-markdown-bg: rgba(239, 239, 239, 0.7);
+    --chat-markdown-border: rgba(212, 212, 212, 0.9);
+    --chat-markdown-color: #e01e5a;
+    --chat-markdown-color-multi: #0a0a0a;
+
+    --chat-room-color-username: #fff;
+    --chat-room-color-message: #6c7278;
+    --chat-room-color-timestamp: #6c7278;
+    --chat-room-color-online: #4caf50;
+    --chat-room-color-offline: #596269;
+    --chat-room-bg-color-badge: #1976d2;
+    --chat-room-color-badge: #fff;
+
+    --chat-emoji-bg-color: #343740;
+
+    --chat-icon-color-search: #596269;
+    --chat-icon-color-add: #fff;
+    --chat-icon-color-toggle: #fff;
+    --chat-icon-color-menu: #fff;
+    --chat-icon-color-close: #9ca6af;
+    --chat-icon-color-close-image: #fff;
+    --chat-icon-color-file: #1976d2;
+    --chat-icon-color-paperclip: #fff;
+    --chat-icon-color-close-outline: #fff;
+    --chat-icon-color-send: #fff;
+    --chat-icon-color-send-disabled: #646a70;
+    --chat-icon-color-emoji: #fff;
+    --chat-icon-color-emoji-reaction: #fff;
+    --chat-icon-color-document: #1976d2;
+    --chat-icon-color-pencil: #ebedf2;
+    --chat-icon-color-checkmark: #ebedf2;
+    --chat-icon-color-checkmark-seen: #f0d90a;
+    --chat-icon-color-eye: #fff;
+    --chat-icon-color-dropdown-message: #fff;
+    --chat-icon-bg-dropdown-message: rgba(0, 0, 0, 0.25);
+    --chat-icon-color-dropdown-room: #fff;
+    --chat-icon-color-dropdown-scroll: #0a0a0a;
+    --chat-icon-color-microphone: #fff;
+    --chat-icon-color-microphone-off: #eb4034;
+
+    --panel-background: #0D0E0F;
+    --panel-color-name: #F2F6FC;
+    --panel-color-username: #52a3e8;
+    --panel-color-icon: #C0C4CC;
+    --panel-color-desc: #b3bac9;
+    --panel-color-timestamp: #b3bac9;
+    --panel-item-bg: #22242a;
+    --panel-item-bg-hover: #1e1e25;
+    --panel-sidebar-bg: #000;
+    --panel-header-bg: #181A1B;
+    --panel-color-sticker-type: #C0C4CC;
+    --panel-color-sticker-type-selected: #409eff;
+    --panel-color-sticker-type-hover: #66b1ff;
+    --panel-color-navi-bottom-bar: #343536;
+}
+
+body {
+    background-color: var(--color-bg-body);
+    color: var(--color-text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+input {
+    background-color: var(--color-input-bg);
+    color: var(--color-input-text);
+    border-color: var(--color-input-border);
+}
+
+button {
+    background-color: var(--color-button-bg);
+}
+
+button:hover {
+    background-color: var(--color-button-hover);
+}
+
+.error {
+    color: var(--color-error);
+}
+
+.theme-toggle {
+    position: fixed;
+    bottom: 20px;
+    left: 15px;
+    width: 40px;
+    height: 40px;
+    border-radius: 20%;
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    padding-left: 11px;
+}
+
+
+.container {
+    display: flex;
+    -ms-flex-direction: row;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.box,
+.box2 {
+    width: 40%;
+    padding: 20px;
+    flex-basis: 100%;
+    border: 2px solid #000;
+    text-align: center;
+    font-size: medium;
+}
+
+.title {
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+
+.monospace {
+    font-family: monospace;
+    /* 启用等宽字体 */
+    border: 1px solid #000;
+    padding: 2px;
+    background-color: #f5f5f5;
+    font-size: small;
+    word-wrap: break-word;
+}
+
+.spacer {
+    height: 30px;
+    /* 设置行间距 */
+}
+
+.input-section {
+    flex-basis: 100%;
+    /* 占满宽度 */
+    padding: 20px;
+    border: 2px solid #000;
+    text-align: center;
+    font-size: 18px;
+    background-color: #ffcdd2;
+    /* 淡蓝色 */
+}
+
+.input-section input {
+    padding: 10px;
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+.input-section button {
+    padding: 10px 20px;
+    font-size: 18px;
+    background-color: #b3ffe8;
+    /* 淡蓝色 */
+    border: none;
+    cursor: pointer;
+}
+
+.input-section button:hover {
+    background-color: #90caf9;
+    /* 深蓝色 */
+}
+
+.result-display {
+    flex-basis: 100%;
+    /* 占满宽度 */
+    width: 100%;
+    padding: 20px;
+    border: 2px solid #000;
+    text-align: center;
+    font-size: 24px;
+    background-color: #e1bee7;
+    /* 淡紫色 */
+}

@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicU64;
+
 use axum::{
     Json, Router,
     extract::{Path, State},
@@ -14,6 +16,26 @@ use crate::db_part::{self, DbData, utils::FromDb};
 use migration::SaveId;
 
 pub mod traits;
+
+/// 网页请求总计数器
+///
+/// 就是闲得没事
+pub static WEB_REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// API 请求总计数器
+///
+/// 就是闲得没事
+pub static API_REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// 获取网页请求计数器, 顺便 +1
+pub fn web_request_counter_pp() -> u64 {
+    WEB_REQUEST_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
+}
+
+/// 获取API请求计数器, 顺便 +1
+pub fn api_request_counter_pp() -> u64 {
+    API_REQUEST_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct WebResponse<T> {
@@ -198,7 +220,7 @@ async fn jump_to_dashboard_from_root() -> impl IntoResponse {
 /// 两个部分分别会展示三行字
 /// 三个框之间的间距为 20px, 宽度为 80%, 高度为 100%
 /// 框上面分别是 "最新数据" "最新飞船" "最新存档" 的标题
-const INFO_PAGE: &str = include_str!("info.html");
+const INFO_PAGE: &str = include_str!("../assets/info.html");
 
 async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     let start_time = std::time::Instant::now();
@@ -263,10 +285,28 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     Html(page_content)
 }
 
-const FAVICON_FILE: &[u8] = include_bytes!("favicon.ico");
+const FAVICON_FILE: &[u8] = include_bytes!("../assets/favicon.ico");
 
 async fn favicon() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "image/x-icon")], FAVICON_FILE)
+}
+
+const INFO_JS_FILE: &[u8] = include_bytes!("../assets/info.js");
+
+async fn info_js() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "application/javascript")], INFO_JS_FILE)
+}
+
+const DARK_JS_FILE: &[u8] = include_bytes!("../assets/dark.js");
+
+async fn dark_js() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "application/javascript")], DARK_JS_FILE)
+}
+
+const INFO_CSS_FILE: &[u8] = include_bytes!("../assets/info.css");
+
+async fn info_css() -> impl IntoResponse {
+    ([(header::CONTENT_TYPE, "text/css")], INFO_CSS_FILE)
 }
 
 pub async fn web_main() -> anyhow::Result<()> {
@@ -292,6 +332,9 @@ pub async fn web_main() -> anyhow::Result<()> {
         .route("/dashboard", get(dashboard_page).post(dashboard_page))
         // favicon
         .route("/favicon.ico", get(favicon).post(favicon))
+        .route("/assets/info.css", get(info_css).post(info_css))
+        .route("/assets/info.js", get(info_js).post(info_js))
+        .route("/assets/dark.js", get(dark_js).post(dark_js))
         // 其他所有路径, 直接跳转到 info 页面
         .route("/{*path}", get(jump_to_dashboard).post(jump_to_dashboard))
         // 包括根路径

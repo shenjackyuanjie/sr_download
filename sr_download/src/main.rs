@@ -1,3 +1,5 @@
+use std::{sync::OnceLock, time::SystemTime};
+
 use colored::Colorize;
 use tracing::{Level, event};
 
@@ -21,6 +23,8 @@ enum RunMode {
     /// 快速模式
     Fast,
 }
+/// 开始时间
+pub static START_TIME: OnceLock<SystemTime> = OnceLock::new();
 
 const HELP_MSG: &str = r#"Usage: srdownload [options] -s/f
 Options:
@@ -30,8 +34,9 @@ Options:
     -f    快速同步模式(用于从零开始)"#;
 
 fn main() -> anyhow::Result<()> {
-    // 检查 CLI 参数
+    START_TIME.get_or_init(SystemTime::now);
 
+    // 检查 CLI 参数
     let args: Vec<String> = std::env::args().collect();
     if args.contains(&"-h".to_string()) {
         println!("{}", HELP_MSG);
@@ -45,7 +50,7 @@ fn main() -> anyhow::Result<()> {
             .find(|x| x.starts_with("-t="))
             .unwrap()
             .split('=')
-            .last()
+            .next_back()
             .unwrap()
             .parse::<usize>()?;
     }

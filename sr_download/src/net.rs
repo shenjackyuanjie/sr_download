@@ -48,6 +48,12 @@ impl DownloadFile {
             DownloadFile::Save(s) => s.len(),
         }
     }
+    pub fn is_empty(&self) -> bool {
+        match self {
+            DownloadFile::Ship(s) => s.is_empty(),
+            DownloadFile::Save(s) => s.is_empty(),
+        }
+    }
     pub fn type_name(&self) -> &'static str {
         match self {
             DownloadFile::Ship(_) => "Ship",

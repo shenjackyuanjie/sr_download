@@ -1,16 +1,16 @@
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse},
     routing::get,
-    Json, Router,
 };
 use reqwest::header;
 use sea_orm::{ActiveEnum, DatabaseConnection};
 use serde::{Deserialize, Serialize};
-use tracing::{event, Level};
+use tracing::{Level, event};
 
-use crate::db_part::{self, utils::FromDb, DbData};
+use crate::db_part::{self, DbData, utils::FromDb};
 use migration::SaveId;
 
 pub mod traits;

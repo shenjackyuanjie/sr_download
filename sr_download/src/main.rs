@@ -1,5 +1,5 @@
 use colored::Colorize;
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 pub mod config;
 pub mod db_part;

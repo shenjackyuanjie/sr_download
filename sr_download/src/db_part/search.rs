@@ -1,7 +1,7 @@
 use sea_orm::{
     ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
 };
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 use crate::model;
 use crate::model::sea_orm_active_enums::SaveType;

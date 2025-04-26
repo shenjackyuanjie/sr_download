@@ -5,10 +5,10 @@ use migration::SaveId;
 use colored::Colorize;
 use futures::future::select_all;
 use tokio::sync::oneshot::Receiver;
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 use crate::db_part::{CoverStrategy, SaveType};
-use crate::{config, db_part, Downloader};
+use crate::{Downloader, config, db_part};
 
 async fn big_worker(
     db: sea_orm::DatabaseConnection,

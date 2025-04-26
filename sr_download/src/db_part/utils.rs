@@ -1,13 +1,14 @@
 use colored::Colorize;
-use quick_xml::{events::Event, Reader};
+use quick_xml::{Reader, events::Event};
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, Statement};
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 use crate::{
     config::ConfigFile,
     db_part::{
-        defines::{db_names, SaveId},
-        save_data_to_db, CoverStrategy,
+        CoverStrategy,
+        defines::{SaveId, db_names},
+        save_data_to_db,
     },
     model::sea_orm_active_enums::SaveType,
 };

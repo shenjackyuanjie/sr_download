@@ -2,10 +2,10 @@ use std::io::Write;
 
 use colored::Colorize;
 use tokio::sync::oneshot::Receiver;
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 use crate::db_part::{CoverStrategy, SaveType};
-use crate::{config, db_part, web_part, Downloader};
+use crate::{Downloader, config, db_part, web_part};
 pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let span = tracing::span!(Level::INFO, "serve_mode");
     let _enter = span.enter();

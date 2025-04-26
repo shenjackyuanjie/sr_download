@@ -3,7 +3,7 @@ use std::path::Path;
 
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 pub mod db_config {
     use serde::{Deserialize, Serialize};

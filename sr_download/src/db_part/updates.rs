@@ -1,5 +1,5 @@
 use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement, TransactionTrait};
-use tracing::{event, Level};
+use tracing::{Level, event};
 
 use crate::config::ConfigFile;
 

@@ -3,12 +3,12 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
     IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
 };
-use tracing::{event, Level};
+use tracing::{Level, event};
 
-use crate::model;
 use crate::config::ConfigFile;
+use crate::model;
 pub use crate::model::sea_orm_active_enums::SaveType;
-use migration::{SaveId, FULL_DATA_VIEW, TEXT_DATA_MAX_LEN};
+use migration::{FULL_DATA_VIEW, SaveId, TEXT_DATA_MAX_LEN};
 
 pub mod defines;
 pub mod search;
@@ -22,7 +22,7 @@ pub async fn full_update(db: &DatabaseConnection, conf: &ConfigFile) {
     if let Err(e) = migrate(db).await {
         event!(Level::ERROR, "sea_orm 迁移失败: {:?}", e);
     };
-    
+
     // 自己的迁移
     updates::update_db(db, conf).await;
 

@@ -1,8 +1,8 @@
 use reqwest::{Client, ClientBuilder};
 use std::time::Duration;
-use tracing::{event, Level};
+use tracing::{Level, event};
 
-use crate::{model::sea_orm_active_enums::SaveType, SaveId};
+use crate::{SaveId, model::sea_orm_active_enums::SaveType};
 
 #[derive(Debug, Clone)]
 pub struct Downloader {
@@ -81,7 +81,7 @@ impl From<&DownloadFile> for SaveType {
     }
 }
 
-pub const EDGE_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0";
+pub const EDGE_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0";
 
 impl Downloader {
     pub fn new(timeout: Option<Duration>) -> Self {

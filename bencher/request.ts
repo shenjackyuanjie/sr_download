@@ -138,6 +138,8 @@ class Benchmarker {
     // 生成简化版延迟分布图
     console.log("\n🔥 延迟分布:");
     console.log(generateHeatmap(this.latencies, COLOR_PALETTE));
+    console.log("\n🌋 延迟火焰图 (对数刻度):");
+    console.log(generateFlameGraph(this.latencies, COLOR_PALETTE));
     console.log(); // 空行分隔
   }
 

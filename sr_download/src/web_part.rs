@@ -185,7 +185,7 @@ async fn get_data_info_by_id(
         },
         Err(e) => Json(WebResponse::new_error(
             StatusCode::BAD_REQUEST,
-            format!("id parse error: {:?}", e),
+            format!("id parse error: {e:?}"),
         )),
     }
 }
@@ -202,7 +202,7 @@ async fn get_data_by_id(
         },
         Err(e) => Json(WebResponse::new_error(
             StatusCode::BAD_REQUEST,
-            format!("id parse error: {:?}", e),
+            format!("id parse error: {e:?}", ),
         )),
     }
 }
@@ -212,8 +212,7 @@ async fn jump_to_dashboard(Path(path): Path<String>) -> impl IntoResponse {
     (
         StatusCode::MOVED_PERMANENTLY,
         Html(format!(
-            "<h1>Jumping from {} to /dashboard</h1><script>location.href='/dashboard'</script>",
-            path
+            "<h1>Jumping from {path} to /dashboard</h1><script>location.href='/dashboard'</script>"
         )),
     )
 }
@@ -303,7 +302,7 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     let service_uptime = service_uptime();
 
     page_content = page_content
-        .replace("|COST_TIME|", &format!("{:?}", elapsed))
+        .replace("|COST_TIME|", &format!("{elapsed:?}"))
         .replace("|VERSION|", env!("CARGO_PKG_VERSION"))
         .replace("|WEB_REQUEST_COUNT|", &web_request_count.to_string())
         .replace("|API_REQUEST_COUNT|", &api_request_count.to_string())

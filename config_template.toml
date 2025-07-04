@@ -18,3 +18,4 @@ worker_size = 10
 host_with_port = "0.0.0.0:10002"
 db_max_connect = 10
 enable = false
+resync_token = "Its a pretty looong token to keep you safe"

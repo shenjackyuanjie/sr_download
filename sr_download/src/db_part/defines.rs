@@ -42,8 +42,7 @@ pub type SaveId = u32;
 
 pub async fn check_table_exists(db: &DatabaseConnection, table_name: &str, schema: &str) -> bool {
     let sql = format!(
-        "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = '{}' AND schemaname = '{}');",
-        table_name, schema
+        "SELECT EXISTS (SELECT FROM pg_tables WHERE tablename = '{table_name}' AND schemaname = '{schema}');"
     );
     if let Ok(Some(exists)) = db
         .query_one(Statement::from_string(DatabaseBackend::Postgres, sql))

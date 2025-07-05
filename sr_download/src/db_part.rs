@@ -117,7 +117,7 @@ impl DbData {
             return "no data".to_string();
         }
         if let Err(e) = utils::verify_xml(self.text.as_ref().unwrap()) {
-            return format!("error: {}", e);
+            return format!("error: {e}");
         }
         "ok".to_string()
     }
@@ -125,8 +125,7 @@ impl DbData {
     /// 直接从 full_data 里选即可
     pub async fn from_db(save_id: SaveId, db: &DatabaseConnection) -> Option<Self> {
         let sql = format!(
-            r#"SELECT "data","save_id","save_type"::"varchar","len","blake_hash" FROM {} WHERE save_id = {}"#,
-            FULL_DATA_VIEW, save_id
+            r#"SELECT "data","save_id","save_type"::"varchar","len","blake_hash" FROM {FULL_DATA_VIEW} WHERE save_id = {save_id}"#,
         );
 
         let datas = db

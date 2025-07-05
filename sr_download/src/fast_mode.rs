@@ -21,7 +21,7 @@ async fn big_worker(
             event!(
                 Level::INFO,
                 "{}",
-                format!("Skip download {} with exist data", work_id).blue()
+                format!("Skip download {work_id} with exist data").blue()
             );
             continue;
         }
@@ -52,14 +52,14 @@ async fn big_worker(
                     event!(
                         Level::INFO,
                         "{}",
-                        format!("Skip save {} with no data", work_id).cyan()
+                        format!("Skip save {work_id} with no data").cyan()
                     );
                     continue;
                 }
                 event!(
                     Level::INFO,
                     "{}",
-                    format!("Download {} with no data", work_id).yellow()
+                    format!("Download {work_id} with no data").yellow()
                 );
                 db_part::save_data_to_db(work_id, SaveType::None, "".to_string(), None, &db)
             }
@@ -76,10 +76,10 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let span = tracing::span!(Level::INFO, "fast_mode");
     let _enter = span.enter();
 
-    let conf = config::ConfigFile::try_read()?;
+    let conf = config::ConfigFile::get_global();
 
-    let db_connect = db_part::connect(&conf).await?;
-    db_part::full_update(&db_connect, &conf).await;
+    let db_connect = db_part::connect(conf).await?;
+    db_part::full_update(&db_connect, conf).await;
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 

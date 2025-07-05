@@ -13,8 +13,8 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
     let conf = config::ConfigFile::get_global();
 
-    let db_connect = db_part::connect(&conf).await?;
-    db_part::full_update(&db_connect, &conf).await;
+    let db_connect = db_part::connect(conf).await?;
+    db_part::full_update(&db_connect, conf).await;
     let mut db_max_id = db_part::search::max_id(&db_connect).await;
 
     let mut web_waiter = None;
@@ -25,11 +25,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     event!(
         Level::INFO,
         "{}",
-        format!(
-            "数据库中最大的现有数据 id 为: {} 将从这里开始下载",
-            db_max_id
-        )
-        .green()
+        format!("数据库中最大的现有数据 id 为: {db_max_id} 将从这里开始下载",).green()
     );
 
     let serve_wait_time = conf.serve_duration();
@@ -68,7 +64,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
                     file.type_name(),
                     work_id,
                     file.len(),
-                    format!("{:?}", wait_time).blue()
+                    format!("{wait_time:?}").blue()
                 )
                 .green()
             );
@@ -87,11 +83,8 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
                     event!(
                         Level::INFO,
                         "{}",
-                        format!(
-                            "保存好啦! (下一排的每一个 . 代表一个 {:?})",
-                            serve_wait_time
-                        )
-                        .green()
+                        format!("保存好啦! (下一排的每一个 . 代表一个 {serve_wait_time:?})",)
+                            .green()
                     );
                 }
                 Err(e) => {

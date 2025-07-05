@@ -1,4 +1,8 @@
-use std::sync::{OnceLock, atomic::AtomicU64};
+use std::{
+    io::Write,
+    sync::{LazyLock, OnceLock, atomic::AtomicU64},
+    time::Duration,
+};
 
 use axum::{
     Json, Router,
@@ -12,7 +16,14 @@ use sea_orm::{ActiveEnum, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 use tracing::{Level, event};
 
-use crate::db_part::{self, DbData, utils::FromDb};
+use crate::{
+    Downloader,
+    db_part::{
+        self, DbData, SaveType,
+        utils::{self, FromDb},
+    },
+    net::DownloadFile,
+};
 use migration::SaveId;
 
 pub mod traits;
@@ -60,7 +71,15 @@ pub struct WebResponse<T> {
 }
 
 impl<T> WebResponse<T> {
-    pub fn new(data: Option<T>) -> Self {
+    pub fn new(status: StatusCode, msg: impl ToString, data: Option<T>) -> Self {
+        Self {
+            code: status.as_u16() as u32,
+            msg: msg.to_string(),
+            data,
+        }
+    }
+
+    pub fn new_with_data(data: Option<T>) -> Self {
         match data {
             Some(data) => Self::new_normal(data),
             None => Self::new_missing("internal error?".to_string()),
@@ -114,6 +133,24 @@ impl LastData {
             xml_tested,
         })
     }
+
+    pub fn from_file(file: &DownloadFile, id: SaveId) -> Self {
+        let xml_tested = utils::verify_xml(file.ref_data()).is_ok();
+        let save_type = file.save_type().to_value().to_string();
+        let len = file.len();
+        let blake_hash = {
+            let mut hasher = blake3::Hasher::new();
+            let _ = hasher.write(file.ref_data().as_bytes());
+            hasher.finalize().to_hex().to_string()
+        };
+        Self {
+            save_id: id,
+            save_type,
+            len: len as i64,
+            blake_hash,
+            xml_tested,
+        }
+    }
 }
 
 /// 最后一个存档的信息
@@ -156,21 +193,29 @@ impl RawData {
             raw_data: data.text?,
         })
     }
+
+    pub fn from_file(file: DownloadFile, id: SaveId) -> Self {
+        let info = LastData::from_file(&file, id);
+        Self {
+            info,
+            raw_data: file.take_data(),
+        }
+    }
 }
 
 async fn get_last_data(State(db): State<DatabaseConnection>) -> Json<WebResponse<LastData>> {
     api_request_counter_pp();
-    Json(WebResponse::new(LastData::from_db(&db).await))
+    Json(WebResponse::new_with_data(LastData::from_db(&db).await))
 }
 
 async fn get_last_save(State(db): State<DatabaseConnection>) -> Json<WebResponse<LastSave>> {
     api_request_counter_pp();
-    Json(WebResponse::new(LastSave::from_db(&db).await))
+    Json(WebResponse::new_with_data(LastSave::from_db(&db).await))
 }
 
 async fn get_last_ship(State(db): State<DatabaseConnection>) -> Json<WebResponse<LastShip>> {
     api_request_counter_pp();
-    Json(WebResponse::new(LastShip::from_db(&db).await))
+    Json(WebResponse::new_with_data(LastShip::from_db(&db).await))
 }
 
 async fn get_data_info_by_id(
@@ -345,12 +390,16 @@ async fn info_css() -> impl IntoResponse {
 }
 
 pub static RESYNC_TOKEN: OnceLock<String> = OnceLock::new();
+/// 用于 resync 的下载器
+static RESYNC_DOWNLOADER: LazyLock<Downloader> =
+    LazyLock::new(|| Downloader::new(Some(Duration::from_secs(10))));
 
 async fn resync_request(
     headers: HeaderMap,
     State(db): State<DatabaseConnection>,
     Path(raw_id): Path<String>,
 ) -> Json<WebResponse<RawData>> {
+    api_request_counter_pp();
     const RESYNC_HEADER: &str = "X-Resync-Token"; // 自定义头部名称
 
     let token = RESYNC_TOKEN.get().unwrap();
@@ -362,12 +411,52 @@ async fn resync_request(
                 "Invalid token",
             ));
         }
-        todo!()
+        match raw_id.parse::<SaveId>() {
+            Ok(id) => match RESYNC_DOWNLOADER.try_download_as_any(id).await {
+                Some(data) => {
+                    let save_type: SaveType = (&data).into();
+                    match db_part::save_data_to_db(
+                        id,
+                        save_type,
+                        data.ref_data(),
+                        Some(db_part::CoverStrategy::CoverIfDifferent),
+                        &db,
+                    )
+                    .await
+                    {
+                        Ok(true) => {
+                            let data = RawData::from_file(data, id);
+                            Json(WebResponse::new_normal(data))
+                        }
+                        Ok(false) => {
+                            let data = RawData::from_file(data, id);
+                            Json(WebResponse::new(
+                                StatusCode::OK,
+                                "Data unchanged, no update needed",
+                                Some(data),
+                            ))
+                        }
+                        Err(e) => Json(WebResponse::new_error(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            format!("Faild to save data to db e:{e}"),
+                        )),
+                    }
+                }
+                None => Json(WebResponse::new_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Download failed",
+                )),
+            },
+            Err(e) => Json(WebResponse::new_error(
+                StatusCode::BAD_REQUEST,
+                format!("failed to parse id:{e}"),
+            )),
+        }
     } else {
-        return Json(WebResponse::new_error(
+        Json(WebResponse::new_error(
             StatusCode::UNAUTHORIZED,
             "Missing resync token header, use X-Resync-Token please",
-        ));
+        ))
     }
 }
 
@@ -375,7 +464,7 @@ pub async fn web_main() -> anyhow::Result<()> {
     let conf = crate::config::ConfigFile::get_global();
 
     let listener = tokio::net::TcpListener::bind(conf.serve.host_with_port.clone()).await?;
-    let db = db_part::connect_server(&conf).await?;
+    let db = db_part::connect_server(conf).await?;
     let app = Router::new()
         // 获取最后一个数据
         .route("/last/data", get(get_last_data).post(get_last_data))

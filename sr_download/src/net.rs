@@ -101,17 +101,11 @@ impl Downloader {
     }
 
     pub fn fmt_ship_url(id: SaveId) -> String {
-        format!(
-            "http://jundroo.com/service/SimpleRockets/DownloadRocket?id={}",
-            id
-        )
+        format!("http://jundroo.com/service/SimpleRockets/DownloadRocket?id={id}",)
     }
 
     pub fn fmt_save_url(id: SaveId) -> String {
-        format!(
-            "http://jundroo.com/service/SimpleRockets/DownloadSandBox?id={}",
-            id
-        )
+        format!("http://jundroo.com/service/SimpleRockets/DownloadSandBox?id={id}",)
     }
 
     /// 尝试用 ship 或者 save 的 API 下载文件

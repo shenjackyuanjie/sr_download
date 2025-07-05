@@ -133,6 +133,9 @@ impl Downloader {
                     event!(Level::DEBUG, "get ship body {:?}", body);
                     // 再判空
                     if !(body.is_empty() || body == "0") {
+                        if body == EMPTY_SHIP {
+                            event!(Level::INFO, "沟槽, 怎么又是空船");
+                        }
                         return Some(DownloadFile::Ship(body));
                     }
                 }
@@ -163,6 +166,9 @@ impl Downloader {
             if try_res.status().is_success() {
                 if let Ok(body) = try_res.text().await {
                     if !(body.is_empty() || body == "0") {
+                        if body == EMPTY_SHIP {
+                            event!(Level::INFO, "沟槽, 怎么又是空船");
+                        }
                         return Some(body);
                     }
                 }

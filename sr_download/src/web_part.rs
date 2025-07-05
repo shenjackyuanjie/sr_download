@@ -26,6 +26,7 @@ use crate::{
 };
 use migration::SaveId;
 
+pub mod assets;
 pub mod traits;
 
 /// 网页请求总计数器
@@ -235,6 +236,12 @@ async fn get_data_info_by_id(
     }
 }
 
+async fn empty_info() -> Json<WebResponse<()>> {
+    Json(WebResponse::new_missing(
+        "you need to use /info/:id to get info",
+    ))
+}
+
 async fn get_data_by_id(
     State(db): State<DatabaseConnection>,
     Path(raw_id): Path<String>,
@@ -359,93 +366,6 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
     Html(page_content)
 }
 
-const FAVICON_FILE: &[u8] = include_bytes!("../assets/favicon.ico");
-
-async fn favicon() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "image/x-icon")], FAVICON_FILE)
-}
-
-const INFO_JS_FILE: &[u8] = include_bytes!("../assets/info.js");
-
-async fn info_js() -> impl IntoResponse {
-    (
-        [(header::CONTENT_TYPE, "application/javascript")],
-        INFO_JS_FILE,
-    )
-}
-
-const DARK_JS_FILE: &[u8] = include_bytes!("../assets/dark.js");
-
-async fn dark_js() -> impl IntoResponse {
-    (
-        [(header::CONTENT_TYPE, "application/javascript")],
-        DARK_JS_FILE,
-    )
-}
-
-const INFO_CSS_FILE: &[u8] = include_bytes!("../assets/info.css");
-
-async fn info_css() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "text/css")], INFO_CSS_FILE)
-}
-
-const UA_DISPLAY: &str = r#"<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>浏览器UA检测器</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 1rem;
-            line-height: 1.6;
-        }
-        .ua-container {
-            background-color: #f0f0f0;
-            border-left: 4px solid #0078d7;
-            padding: 1rem;
-            margin: 1rem 0;
-            overflow-wrap: break-word;
-        }
-        .highlight {
-            color: #0078d7;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <h1>浏览器User-Agent检测器</h1>
-    <p>您的浏览器标识信息：</p>
-    <div id="uaDisplay" class="ua-container">正在获取UA信息...</div>
-    <p>这个信息可以帮助网站开发者了解您使用的<strong class="highlight">浏览器类型</strong>和<strong class="highlight">操作系统版本</strong>。</p>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const ua = navigator.userAgent;
-            const displayElement = document.getElementById('uaDisplay');
-
-            // 添加UA信息到页面
-            displayElement.textContent = ua;
-
-            // 添加分析信息
-            displayElement.insertAdjacentHTML('afterend',
-                `<p>分析结果：您正在使用
-                ${ua.includes('Windows') ? 'Windows' :
-                 ua.includes('Mac') ? 'macOS' :
-                 ua.includes('Linux') ? 'Linux' : '未知'} 操作系统</p>`);
-        });
-    </script>
-</body>
-</html>
-"#;
-
-async fn ua_display() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "text/html")], UA_DISPLAY)
-}
-
 pub static RESYNC_TOKEN: OnceLock<String> = OnceLock::new();
 /// 用于 resync 的下载器
 static RESYNC_DOWNLOADER: LazyLock<Downloader> =
@@ -517,6 +437,12 @@ async fn resync_request(
     }
 }
 
+async fn empty_resync() -> Json<WebResponse<()>> {
+    Json(WebResponse::new_missing(
+        "you need to use /resync/:id to call resync",
+    ))
+}
+
 pub async fn web_main() -> anyhow::Result<()> {
     let conf = crate::config::ConfigFile::get_global();
 
@@ -534,20 +460,31 @@ pub async fn web_main() -> anyhow::Result<()> {
             "/info/{id}",
             get(get_data_info_by_id).post(get_data_info_by_id),
         )
+        .route("/info", get(empty_info).post(empty_info))
         // 重新同步指定 id 的数据 (需要 token)
         .route("/resync/{id}", get(resync_request))
+        .route("/resync", get(empty_resync).post(empty_resync))
         // 获取下载指定 id 的数据
         .route("/download/{id}", get(get_data_by_id).post(get_data_by_id))
         // info 页面
         .route("/dashboard", get(dashboard_page).post(dashboard_page))
         .route("/dashboard.html", get(dashboard_page).post(dashboard_page))
         // favicon
-        .route("/favicon.ico", get(favicon).post(favicon))
+        .route("/favicon.ico", get(assets::favicon).post(assets::favicon))
         // assets
-        .route("/assets/info.css", get(info_css).post(info_css))
-        .route("/assets/info.js", get(info_js).post(info_js))
-        .route("/assets/dark.js", get(dark_js).post(dark_js))
-        .route("/ua_display", get(ua_display))
+        .route(
+            "/assets/info.css",
+            get(assets::info_css).post(assets::info_css),
+        )
+        .route(
+            "/assets/info.js",
+            get(assets::info_js).post(assets::info_js),
+        )
+        .route(
+            "/assets/dark.js",
+            get(assets::dark_js).post(assets::dark_js),
+        )
+        .route("/ua_display", get(assets::ua_display))
         // 其他所有路径, 直接跳转到 info 页面
         .route("/{*path}", get(jump_to_dashboard).post(jump_to_dashboard))
         // 包括根路径

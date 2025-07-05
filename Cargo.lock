@@ -2682,7 +2682,7 @@ dependencies = [
 
 [[package]]
 name = "sr_download"
-version = "1.2.9"
+version = "1.2.10"
 dependencies = [
  "anyhow",
  "axum",

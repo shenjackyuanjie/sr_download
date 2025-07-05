@@ -87,11 +87,18 @@ impl From<&DownloadFile> for SaveType {
     }
 }
 
-pub const EDGE_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0";
+/// 我也不知道存这么多 UA 干啥
+pub const REQUEST_UA: [&str; 4] = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0",
+    "Mozilla/5.0 (Phone; OpenHarmony 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 ArkWeb/4.1.6.1 Mobile HuaweiBrowser/5.1.5.352",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.196 Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 12;) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.196 HuaweiBrowser/16.0.1.301 Mobile Safari/537.36",
+];
+pub const EMPTY_SHIP: &str = r#"<Ship version="1" liftedOff="0" touchingGround="0"><DisconnectedParts/><Parts><Part partType="pod-1" id="1" x="0.000000" y="0.750000" angle="0.000000" angleV="0.000000" editorAngle="0"><Pod throttle="0.000000" name=""><Staging currentStage="0"/></Pod></Part></Parts><Connections/></Ship>"#;
 
 impl Downloader {
     pub fn new(timeout: Option<Duration>) -> Self {
-        let ua = format!("{} sr_download/{}", EDGE_UA, env!("CARGO_PKG_VERSION"));
+        let ua = format!("sr_download/{}", env!("CARGO_PKG_VERSION"));
         let mut client = ClientBuilder::new().user_agent(ua);
         if let Some(timeout) = timeout {
             client = client.timeout(timeout);

@@ -1,5 +1,8 @@
 use migration::SaveId;
-use std::path::Path;
+use std::{
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
@@ -82,6 +85,12 @@ pub mod serve_config {
         false
     }
 
+    const LONG_TOKEN: &str = "Its a pretty looong token to keep you safe";
+
+    pub fn loong_token() -> String {
+        LONG_TOKEN.to_string()
+    }
+
     #[derive(Serialize, Deserialize, Debug, Clone)]
     #[serde(rename = "serve")]
     pub struct ServeConfig {
@@ -91,6 +100,8 @@ pub mod serve_config {
         pub db_max_connect: u32,
         #[serde(default = "just_false")]
         pub enable: bool,
+        #[serde(default = "loong_token")]
+        pub resync_token: String,
     }
 
     impl Default for ServeConfig {
@@ -99,6 +110,7 @@ pub mod serve_config {
                 host_with_port: default_serve(),
                 db_max_connect: default_serve_connect(),
                 enable: just_false(),
+                resync_token: loong_token(),
             }
         }
     }
@@ -116,8 +128,10 @@ pub struct ConfigFile {
     pub serve: ServeConfig,
 }
 
+pub static GLOBAL_CFG: OnceLock<ConfigFile> = OnceLock::new();
+
 impl ConfigFile {
-    pub fn read_from_file(file_path: &Path) -> anyhow::Result<Self> {
+    pub fn read_from_file(file_path: PathBuf) -> anyhow::Result<Self> {
         let data = std::fs::read_to_string(file_path)?;
         let config: ConfigFile = toml::from_str(&data)?;
         Ok(config)
@@ -138,11 +152,13 @@ impl ConfigFile {
         std::time::Duration::from_secs_f32(self.sync.max_timeout)
     }
 
-    /// 自动帮你骂用户了
-    /// 你直接 ? 就行
-    pub fn try_read() -> anyhow::Result<Self> {
-        match Self::read_from_file(Path::new("config.toml")) {
-            Ok(conf) => Ok(conf),
+    pub fn init_global(path: Option<PathBuf>) {
+        match Self::read_from_file(path.unwrap_or(PathBuf::from("config.toml"))) {
+            Ok(conf) => {
+                let resync_token = conf.serve.resync_token.clone();
+                crate::web_part::RESYNC_TOKEN.get_or_init(|| resync_token);
+                GLOBAL_CFG.get_or_init(|| conf);
+            }
             Err(e) => {
                 let _ = tracing_subscriber::fmt::try_init();
                 event!(Level::ERROR, "{}", "Please Fix the config.toml file".red());
@@ -152,18 +168,18 @@ impl ConfigFile {
                     event!(
                         Level::ERROR,
                         "template file like this: {}",
-                        toml::to_string(&Self::default())?
+                        toml::to_string(&Self::default()).expect("wtf")
                     );
+                    panic!("faild to write template cfg");
+                } else {
+                    GLOBAL_CFG.get_or_init(Self::default);
+                    crate::web_part::RESYNC_TOKEN.get_or_init(serve_config::loong_token);
                 }
-                Err(e)
             }
         }
     }
 
-    /// 同理, 也帮你骂好了
-    /// 甚至不需要你 ?
-    #[allow(unused)]
-    pub fn read_or_panic() -> Self {
-        Self::try_read().expect("Please Fix the config.toml file")
+    pub fn get_global() -> &'static Self {
+        GLOBAL_CFG.get().unwrap()
     }
 }

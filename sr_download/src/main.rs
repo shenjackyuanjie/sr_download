@@ -1,5 +1,6 @@
 use std::{sync::OnceLock, time::SystemTime};
 
+use clap::{ArgGroup, Parser};
 use colored::Colorize;
 use tracing::{Level, event};
 
@@ -26,62 +27,70 @@ enum RunMode {
 /// 开始时间
 pub static START_TIME: OnceLock<SystemTime> = OnceLock::new();
 
-const HELP_MSG: &str = r#"Usage: srdownload [options] -s/f
-Options:
-    -d    Debug mode
-    -t=xx 运行线程数 (默认 10)
-    -s    服务模式
-    -f    快速同步模式(用于从零开始)"#;
+#[derive(Parser, Debug)]
+#[command(
+    name = "srdownload",
+    about = "simple rocket下载器",
+    version,
+    author,
+    group(
+        ArgGroup::new("mode")
+            .required(true)
+            .args(&["serve", "fast"])
+    )
+)]
+struct Cli {
+    /// Debug模式
+    #[arg(short = 'd', long = "debug")]
+    debug: bool,
+
+    /// 运行线程数 (默认10)
+    #[arg(short = 't', long = "threads", default_value_t = 10)]
+    threads: usize,
+
+    /// 服务模式
+    #[arg(short = 's', long = "serve", group = "mode")]
+    serve: bool,
+
+    /// 快速同步模式(用于从零开始)
+    #[arg(short = 'f', long = "fast", group = "mode")]
+    fast: bool,
+}
 
 fn main() -> anyhow::Result<()> {
     START_TIME.get_or_init(SystemTime::now);
 
-    // 检查 CLI 参数
-    let args: Vec<String> = std::env::args().collect();
-    if args.contains(&"-h".to_string()) {
-        println!("{}", HELP_MSG);
-        return Ok(());
-    }
+    let cli = Cli::parse();
 
-    let mut thread_count = 10;
-    if args.iter().any(|x| x.starts_with("-t=")) {
-        thread_count = args
-            .iter()
-            .find(|x| x.starts_with("-t="))
-            .unwrap()
-            .split('=')
-            .next_back()
-            .unwrap()
-            .parse::<usize>()?;
-    }
-    if args.contains(&"-d".to_string()) {
+    if cli.debug {
         tracing_subscriber::fmt()
             .with_max_level(Level::DEBUG)
             .init();
     } else {
         tracing_subscriber::fmt().with_max_level(Level::INFO).init();
     }
-    let mode = {
-        if args.contains(&"-s".to_string()) {
-            RunMode::Serve
-        } else if args.contains(&"-f".to_string()) {
-            RunMode::Fast
-        } else {
-            event!(
-                Level::ERROR,
-                "{}",
-                "Please use -s or -f to start the program".red()
-            );
-            event!(Level::ERROR, "{}", "Use -s to start serve mode".red());
-            event!(Level::ERROR, "{}", "Use -f to start fast mode".red());
-            return Ok(());
-        }
+
+    let mode = if cli.serve {
+        RunMode::Serve
+    } else if cli.fast {
+        RunMode::Fast
+    } else {
+        event!(
+            Level::ERROR,
+            "{}",
+            "Please use -s or -f to start the program".red()
+        );
+        event!(Level::ERROR, "{}", "Use -s to start serve mode".red());
+        event!(Level::ERROR, "{}", "Use -f to start fast mode".red());
+        return Ok(());
     };
 
     event!(Level::INFO, "Starting sr download");
 
+    config::ConfigFile::init_global(None);
+
     let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(thread_count)
+        .worker_threads(cli.threads)
         .enable_all()
         .build()?;
     rt.block_on(async_main(mode))

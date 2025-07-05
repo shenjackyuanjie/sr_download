@@ -6,11 +6,12 @@ use tracing::{Level, event};
 
 use crate::db_part::{CoverStrategy, SaveType};
 use crate::{Downloader, config, db_part, web_part};
+
 pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let span = tracing::span!(Level::INFO, "serve_mode");
     let _enter = span.enter();
 
-    let conf = config::ConfigFile::try_read()?;
+    let conf = config::ConfigFile::get_global();
 
     let db_connect = db_part::connect(&conf).await?;
     db_part::full_update(&db_connect, &conf).await;

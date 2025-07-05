@@ -1,9 +1,9 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::{OnceLock, atomic::AtomicU64};
 
 use axum::{
     Json, Router,
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse},
     routing::get,
 };
@@ -75,18 +75,18 @@ impl<T> WebResponse<T> {
         }
     }
 
-    pub fn new_missing(msg: String) -> Self {
+    pub fn new_missing(msg: impl ToString) -> Self {
         Self {
             code: StatusCode::NOT_FOUND.as_u16() as u32,
-            msg,
+            msg: msg.to_string(),
             data: None,
         }
     }
 
-    pub fn new_error(status: StatusCode, msg: String) -> Self {
+    pub fn new_error(status: StatusCode, msg: impl ToString) -> Self {
         Self {
             code: status.as_u16() as u32,
-            msg,
+            msg: msg.to_string(),
             data: None,
         }
     }
@@ -202,7 +202,7 @@ async fn get_data_by_id(
         },
         Err(e) => Json(WebResponse::new_error(
             StatusCode::BAD_REQUEST,
-            format!("id parse error: {e:?}", ),
+            format!("id parse error: {e:?}",),
         )),
     }
 }
@@ -306,7 +306,10 @@ async fn dashboard_page(State(db): State<DatabaseConnection>) -> Html<String> {
         .replace("|VERSION|", env!("CARGO_PKG_VERSION"))
         .replace("|WEB_REQUEST_COUNT|", &web_request_count.to_string())
         .replace("|API_REQUEST_COUNT|", &api_request_count.to_string())
-        .replace("|SERVICE_UPTIME|", &humantime::format_duration(service_uptime).to_string());
+        .replace(
+            "|SERVICE_UPTIME|",
+            &humantime::format_duration(service_uptime).to_string(),
+        );
 
     Html(page_content)
 }
@@ -320,13 +323,19 @@ async fn favicon() -> impl IntoResponse {
 const INFO_JS_FILE: &[u8] = include_bytes!("../assets/info.js");
 
 async fn info_js() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "application/javascript")], INFO_JS_FILE)
+    (
+        [(header::CONTENT_TYPE, "application/javascript")],
+        INFO_JS_FILE,
+    )
 }
 
 const DARK_JS_FILE: &[u8] = include_bytes!("../assets/dark.js");
 
 async fn dark_js() -> impl IntoResponse {
-    ([(header::CONTENT_TYPE, "application/javascript")], DARK_JS_FILE)
+    (
+        [(header::CONTENT_TYPE, "application/javascript")],
+        DARK_JS_FILE,
+    )
 }
 
 const INFO_CSS_FILE: &[u8] = include_bytes!("../assets/info.css");
@@ -335,8 +344,35 @@ async fn info_css() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "text/css")], INFO_CSS_FILE)
 }
 
+pub static RESYNC_TOKEN: OnceLock<String> = OnceLock::new();
+
+async fn resync_request(
+    headers: HeaderMap,
+    State(db): State<DatabaseConnection>,
+    Path(raw_id): Path<String>,
+) -> Json<WebResponse<RawData>> {
+    const RESYNC_HEADER: &str = "X-Resync-Token"; // 自定义头部名称
+
+    let token = RESYNC_TOKEN.get().unwrap();
+    if let Some(receive_token) = headers.get(RESYNC_HEADER) {
+        // 比较令牌值（注意HeaderValue需要转换）
+        if receive_token != token {
+            return Json(WebResponse::new_error(
+                StatusCode::UNAUTHORIZED,
+                "Invalid token",
+            ));
+        }
+        todo!()
+    } else {
+        return Json(WebResponse::new_error(
+            StatusCode::UNAUTHORIZED,
+            "Missing resync token header, use X-Resync-Token please",
+        ));
+    }
+}
+
 pub async fn web_main() -> anyhow::Result<()> {
-    let conf = crate::config::ConfigFile::try_read()?;
+    let conf = crate::config::ConfigFile::get_global();
 
     let listener = tokio::net::TcpListener::bind(conf.serve.host_with_port.clone()).await?;
     let db = db_part::connect_server(&conf).await?;
@@ -352,6 +388,8 @@ pub async fn web_main() -> anyhow::Result<()> {
             "/info/{id}",
             get(get_data_info_by_id).post(get_data_info_by_id),
         )
+        // 重新同步指定 id 的数据 (需要 token)
+        .route("/resync/{id}", get(resync_request))
         // 获取下载指定 id 的数据
         .route("/download/{id}", get(get_data_by_id).post(get_data_by_id))
         // info 页面
@@ -359,6 +397,7 @@ pub async fn web_main() -> anyhow::Result<()> {
         .route("/dashboard.html", get(dashboard_page).post(dashboard_page))
         // favicon
         .route("/favicon.ico", get(favicon).post(favicon))
+        // assets
         .route("/assets/info.css", get(info_css).post(info_css))
         .route("/assets/info.js", get(info_js).post(info_js))
         .route("/assets/dark.js", get(dark_js).post(dark_js))

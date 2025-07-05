@@ -11,7 +11,6 @@ use axum::{
     response::{Html, IntoResponse},
     routing::get,
 };
-use reqwest::header;
 use sea_orm::{ActiveEnum, DatabaseConnection};
 use serde::{Deserialize, Serialize};
 use tracing::{Level, event};

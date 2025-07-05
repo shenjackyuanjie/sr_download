@@ -151,7 +151,7 @@ pub async fn check_null_data(db: &DatabaseConnection) -> Option<()> {
 }
 
 pub trait FromDb {
-    async fn from_db(db: &DatabaseConnection) -> Option<Self>
+    fn from_db(db: &DatabaseConnection) -> impl std::future::Future<Output = Option<Self>> + Send
     where
         Self: Sized;
 }

@@ -1,4 +1,4 @@
-use std::{sync::OnceLock, time::SystemTime};
+use std::{path::PathBuf, sync::OnceLock, time::SystemTime};
 
 use clap::{ArgGroup, Parser};
 use colored::Colorize;
@@ -48,6 +48,10 @@ struct Cli {
     #[arg(short = 't', long = "threads", default_value_t = 10)]
     threads: usize,
 
+    /// 配置文件路径 (默认 "./config.toml")
+    #[arg(short = 'c', long = "config", default_value = "./config.toml")]
+    config: String,
+
     /// 服务模式
     #[arg(short = 's', long = "serve", group = "mode")]
     serve: bool,
@@ -87,7 +91,9 @@ fn main() -> anyhow::Result<()> {
 
     event!(Level::INFO, "Starting sr download");
 
-    config::ConfigFile::init_global(None);
+    let cfg_path = cli.config.clone();
+
+    config::ConfigFile::init_global(Some(PathBuf::from(cfg_path)));
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(cli.threads)

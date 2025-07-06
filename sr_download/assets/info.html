@@ -10,61 +10,180 @@
     <body>
         <script src="/assets/dark.js"></script>
         <script src="/assets/info.js"></script>
-        <div class="spacer"></div>
-        <div class="container">
-            <div class="box2" style="background-color: #bbdefb">
-                <div class="title">最新数据</div>
-                <div>最大 id: |MAX_ID|</div>
-                <div>类型: |MAX_SAVE_TYPE|</div>
-                <div>长度: |MAX_LEN|</div>
-                <div>xml校验: |MAX_XML|</div>
-                <div>blake hash: <span class="monospace">|MAX_HASH|</span></div>
-            </div>
-        </div>
-        <div class="spacer"></div>
-        <div class="container">
-            <div class="box" style="background-color: #ffe0b2">
-                <div class="title">最新飞船</div>
-                <div>最大飞船 id: |MAX_SHIP_ID|</div>
-                <div>长度: |MAX_SHIP_LEN|</div>
-                <div>xml校验: |MAX_SHIP_XML|</div>
-                <div>
-                    blake hash: <span class="monospace">|MAX_SHIP_HASH|</span>
-                </div>
-            </div>
-            <div class="box" style="background-color: #c8e6c9">
-                <div class="title">最新存档</div>
-                <div>最大存档 id: |MAX_SAVE_ID|</div>
-                <div>长度: |MAX_SAVE_LEN|</div>
-                <div>xml校验: |MAX_SAVE_XML|</div>
-                <div>
-                    blake hash: <span class="monospace">|MAX_SAVE_HASH|</span>
-                </div>
-            </div>
-        </div>
-        <div class="spacer"></div>
-        <div class="container">
-            <div class="box" style="background-color: cadetblue">
-                <div class="title">相关信息</div>
-                <div>请求用时: |COST_TIME|</div>
-                <div>网页请求次数: |WEB_REQUEST_COUNT|</div>
-                <div>API请求次数: |API_REQUEST_COUNT|</div>
-                <div>服务运行时间: |SERVICE_UPTIME|</div>
-                <div>sr-download 版本号: |VERSION|</div>
-            </div>
-        </div>
-        <div class="spacer"></div>
-        <div class="container">
-            <div class="input-section">
-                <input type="number" id="dataId" placeholder="输入ID" />
-                <button type="button" onclick="fetchData()">获取数据</button>
-            </div>
-        </div>
-        <div class="spacer"></div>
-        <div class="container">
-            <div class="result-display">
-                <div class="title">请求结果</div>
-            </div>
+        
+        <div class="page-container">
+            <header class="page-header">
+                <h1 class="page-title">sr-download 信息面板</h1>
+                <p class="page-subtitle">实时数据监控与查询</p>
+            </header>
+
+            <main class="main-content">
+                <!-- 最新数据概览 -->
+                <section class="data-overview">
+                    <div class="card card-primary">
+                        <div class="card-header">
+                            <h2 class="card-title">📊 最新数据</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="data-item">
+                                <span class="data-label">最大 ID</span>
+                                <span class="data-value">|MAX_ID|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">类型</span>
+                                <span class="data-value">|MAX_SAVE_TYPE|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">长度</span>
+                                <span class="data-value">|MAX_LEN|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">XML校验</span>
+                                <span class="data-value status-badge">|MAX_XML|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Blake Hash</span>
+                                <span class="data-value hash-value">|MAX_HASH|</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 分类数据 -->
+                <section class="data-categories">
+                    <div class="card card-ship">
+                        <div class="card-header">
+                            <h2 class="card-title">🚀 最新飞船</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="data-item">
+                                <span class="data-label">最大飞船 ID</span>
+                                <span class="data-value">|MAX_SHIP_ID|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">长度</span>
+                                <span class="data-value">|MAX_SHIP_LEN|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">XML校验</span>
+                                <span class="data-value status-badge">|MAX_SHIP_XML|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Blake Hash</span>
+                                <span class="data-value hash-value">|MAX_SHIP_HASH|</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-save">
+                        <div class="card-header">
+                            <h2 class="card-title">💾 最新存档</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="data-item">
+                                <span class="data-label">最大存档 ID</span>
+                                <span class="data-value">|MAX_SAVE_ID|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">长度</span>
+                                <span class="data-value">|MAX_SAVE_LEN|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">XML校验</span>
+                                <span class="data-value status-badge">|MAX_SAVE_XML|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">Blake Hash</span>
+                                <span class="data-value hash-value">|MAX_SAVE_HASH|</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 系统信息 -->
+                <section class="system-info">
+                    <div class="card card-info">
+                        <div class="card-header">
+                            <h2 class="card-title">ℹ️ 系统信息</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="data-item">
+                                <span class="data-label">请求用时</span>
+                                <span class="data-value">|COST_TIME|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">网页请求次数</span>
+                                <span class="data-value">|WEB_REQUEST_COUNT|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">API请求次数</span>
+                                <span class="data-value">|API_REQUEST_COUNT|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">服务运行时间</span>
+                                <span class="data-value">|SERVICE_UPTIME|</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">版本号</span>
+                                <span class="data-value version-badge">|VERSION|</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 数据查询 -->
+                <section class="data-query">
+                    <div class="card card-query">
+                        <div class="card-header">
+                            <h2 class="card-title">🔍 数据查询</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="query-form">
+                                <div class="input-group">
+                                    <input 
+                                        type="number" 
+                                        id="dataId" 
+                                        class="query-input" 
+                                        placeholder="请输入数据 ID" 
+                                        min="76858"
+                                    />
+                                    <button 
+                                        type="button" 
+                                        class="query-button" 
+                                        onclick="fetchData()"
+                                    >
+                                        查询数据
+                                    </button>
+                                </div>
+                                <div class="input-hint">
+                                    <small>最小 ID: 76858</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 查询结果 -->
+                <section class="query-results">
+                    <div class="card card-result">
+                        <div class="card-header">
+                            <h2 class="card-title">📋 查询结果</h2>
+                        </div>
+                        <div class="card-content">
+                            <div class="result-display" id="resultDisplay">
+                                <div class="result-placeholder">
+                                    <div class="placeholder-icon">🔍</div>
+                                    <p>输入 ID 并点击查询按钮获取数据</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="page-footer">
+                <p>&copy; 2024 sr-download - 数据监控面板</p>
+            </footer>
         </div>
     </body>
 </html>

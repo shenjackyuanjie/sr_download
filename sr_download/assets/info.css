@@ -1,383 +1,602 @@
 :root {
+    /* 基础颜色 */
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-danger: #ef4444;
+    --color-info: #06b6d4;
+    
     /* 明亮主题 */
-    --color-bg-body: #f0f2f5;
+    --color-bg-body: #f8fafc;
     --color-bg-container: #ffffff;
-    --color-text-primary: #333333;
-    --color-input-bg: #ffffff;
-    --color-input-text: #333333;
-    --color-input-border: #dddddd;
-    --color-button-bg: #007bff;
-    --color-button-hover: #0056b3;
-    --color-error: #ff0000;
+    --color-bg-card: #ffffff;
+    --color-bg-secondary: #f1f5f9;
+    --color-text-primary: #1e293b;
+    --color-text-secondary: #64748b;
+    --color-text-muted: #94a3b8;
+    --color-border: #e2e8f0;
+    --color-border-light: #f1f5f9;
     --color-shadow: rgba(0, 0, 0, 0.1);
-
-    /* 源码来自: icalingua */
-    --chat-color: #0a0a0a;
-    --chat-bg-color-input: #fff;
-    --chat-color-spinner: #333;
-    --chat-color-placeholder: #9ca6af;
-    --chat-color-caret: #1976d2;
-    --chat-border-style: 1px solid #e1e4e8;
-    --chat-bg-scroll-icon: #fff;
-    --chat-container-border: none;
-    --chat-container-border-radius: 0;
-    --chat-container-box-shadow: none;
-    --chat-header-bg-color: #fff;
-    --chat-header-color-name: #0a0a0a;
-    --chat-header-color-info: #9ca6af;
-    --chat-footer-bg-color: #f8f9fa;
-    --chat-border-style-input: 1px solid #e1e4e8;
-    --chat-border-color-input-selected: #1976d2;
-    --chat-footer-bg-color-reply: #e5e5e6;
-    --chat-footer-bg-color-tag-active: #e5e5e6;
-    --chat-content-bg-color: #f8f9fa;
-    --chat-sidemenu-bg-color: #fff;
-    --chat-sidemenu-bg-color-hover: #f6f6f6;
-    --chat-sidemenu-bg-color-active: #e5effa;
-    --chat-sidemenu-color-active: #1976d2;
-    --chat-sidemenu-border-color-search: #e1e5e8;
-
-    --chat-dropdown-bg-color: #fff;
-    --chat-dropdown-bg-color-hover: #f6f6f6;
-
-    --chat-message-bg-color: #fff;
-    --chat-message-bg-color-me: #ccf2cf;
-    --chat-message-color-started: #9ca6af;
-    --chat-message-bg-color-deleted: #dadfe2;
-    --chat-message-bg-color-selected: #c2dcf2;
-    --chat-message-color-deleted: #757e85;
-    --chat-message-color-username: #9ca6af;
-    --chat-message-color-timestamp: #828c94;
-    --chat-message-bg-color-date: #e5effa;
-    --chat-message-color-date: #505a62;
-    --chat-message-bg-color-system: #e5effa;
-    --chat-message-color-system: #505a62;
-    --chat-message-color: #0a0a0a;
-    --chat-message-bg-color-media: rgba(0, 0, 0, 0.15);
-    --chat-message-bg-color-reply: rgba(0, 0, 0, 0.08);
-    --chat-message-color-reply-username: #0a0a0a;
-    --chat-message-color-reply-content: #6e6e6e;
-    --chat-message-color-tag: #0d579c;
-    --chat-message-bg-color-image: #ddd;
-    --chat-message-color-new-messages: #1976d2;
-    --chat-message-bg-color-scroll-counter: #0696c7;
-    --chat-message-color-scroll-counter: #fff;
-    --chat-message-bg-color-reaction: #eee;
-    --chat-message-border-style-reaction: 1px solid #eee;
-    --chat-message-bg-color-reaction-hover: #fff;
-    --chat-message-border-style-reaction-hover: 1px solid #ddd;
-    --chat-message-color-reaction-counter: #0a0a0a;
-    --chat-message-bg-color-reaction-me: #cfecf5;
-    --chat-message-border-style-reaction-me: 1px solid #3b98b8;
-    --chat-message-bg-color-reaction-hover-me: #cfecf5;
-    --chat-message-border-style-reaction-hover-me: 1px solid #3b98b8;
-    --chat-message-color-reaction-counter-me: #0b59b3;
-    --chat-markdown-bg: rgba(239, 239, 239, 0.7);
-    --chat-markdown-border: rgba(212, 212, 212, 0.9);
-    --chat-markdown-color: #e01e5a;
-    --chat-markdown-color-multi: #0a0a0a;
-    --chat-room-color-username: #0a0a0a;
-    --chat-room-color-message: #67717a;
-    --chat-room-color-timestamp: #a2aeb8;
-    --chat-room-color-online: #4caf50;
-    --chat-room-color-offline: #9ca6af;
-    --chat-room-bg-color-badge: #0696c7;
-    --chat-room-color-badge: #fff;
-
-    --chat-emoji-bg-color: #fff;
-
-    --chat-icon-color-search: #9ca6af;
-    --chat-icon-color-add: #1976d2;
-    --chat-icon-color-toggle: #0a0a0a;
-    --chat-icon-color-menu: #0a0a0a;
-    --chat-icon-color-close: #9ca6af;
-    --chat-icon-color-close-image: #fff;
-    --chat-icon-color-file: #1976d2;
-    --chat-icon-color-paperclip: #1976d2;
-    --chat-icon-color-close-outline: #000;
-    --chat-icon-color-send: #1976d2;
-    --chat-icon-color-send-disabled: #9ca6af;
-    --chat-icon-color-emoji: #1976d2;
-    --chat-icon-color-emoji-reaction: rgba(0, 0, 0, 0.3);
-    --chat-icon-color-document: #1976d2;
-    --chat-icon-color-pencil: #9e9e9e;
-    --chat-icon-color-checkmark: #9e9e9e;
-    --chat-icon-color-checkmark-seen: #0696c7;
-    --chat-icon-color-eye: #fff;
-    --chat-icon-color-dropdown-message: #fff;
-    --chat-icon-bg-dropdown-message: rgba(0, 0, 0, 0.25);
-    --chat-icon-color-dropdown-room: #9e9e9e;
-    --chat-icon-color-dropdown-scroll: #0a0a0a;
-    --chat-icon-color-microphone: #1976d2;
-    --chat-icon-color-microphone-off: #eb4034;
-
-    --panel-background: #ffffff;
-    --panel-color-name: #303133;
-    --panel-color-username: #1976d2;
-    --panel-color-icon: #909399;
-    --panel-color-desc: #606266;
-    --panel-color-timestamp: #606266;
-    --panel-item-bg: #e5effa;
-    --panel-item-bg-hover: #f2f6fc;
-    --panel-sidebar-bg: #303133;
-    --panel-header-bg: #fff;
-    --panel-color-sticker-type: #303133;
-    --panel-color-sticker-type-selected: #409eff;
-    --panel-color-sticker-type-hover: #66b1ff;
-    --panel-color-navi-bottom-bar: #E4E7ED;
+    --color-shadow-light: rgba(0, 0, 0, 0.05);
+    
+    /* 输入框 */
+    --color-input-bg: #ffffff;
+    --color-input-text: #1e293b;
+    --color-input-border: #d1d5db;
+    --color-input-border-focus: #2563eb;
+    --color-input-placeholder: #9ca3af;
+    
+    /* 按钮 */
+    --color-button-bg: #2563eb;
+    --color-button-text: #ffffff;
+    --color-button-hover: #1d4ed8;
+    --color-button-active: #1e40af;
+    
+    /* 卡片主题色 */
+    --color-card-primary: #dbeafe;
+    --color-card-ship: #fef3c7;
+    --color-card-save: #dcfce7;
+    --color-card-info: #e0f2fe;
+    --color-card-query: #fce7f3;
+    --color-card-result: #f3e8ff;
+    
+    /* 字体 */
+    --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+    
+    /* 间距 */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    
+    /* 圆角 */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    
+    /* 阴影 */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="dark"] {
     /* 暗黑主题 */
-    --color-bg-body: #121212;
-    --color-bg-container: #1e1e1e;
-    --color-input-border: #3d3d3d;
-    --color-input-bg: #2d2d2d;
-    --color-input-text: #ffffff;
-    --color-text-primary: #e0e0e0;
-    --color-button-bg: #1976d2;
-    --color-button-text: #e0e0e0;
-    --color-button-hover: #115293;
-    --color-error: #ff6b6b;
-    --shadow-default: 0 2px 10px rgba(0, 0, 0, 0.3);
-    --color-text-secondary: #909090;
-    --color-theme-switch-btn-bg: #1e1e1e;
+    --color-bg-body: #0f172a;
+    --color-bg-container: #1e293b;
+    --color-bg-card: #1e293b;
+    --color-bg-secondary: #334155;
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #cbd5e1;
+    --color-text-muted: #94a3b8;
+    --color-border: #334155;
+    --color-border-light: #475569;
+    --color-shadow: rgba(0, 0, 0, 0.3);
+    --color-shadow-light: rgba(0, 0, 0, 0.2);
+    
+    /* 输入框 */
+    --color-input-bg: #334155;
+    --color-input-text: #f8fafc;
+    --color-input-border: #475569;
+    --color-input-border-focus: #3b82f6;
+    --color-input-placeholder: #64748b;
+    
+    /* 按钮 */
+    --color-button-bg: #3b82f6;
+    --color-button-text: #ffffff;
+    --color-button-hover: #2563eb;
+    --color-button-active: #1d4ed8;
+    
+    /* 卡片主题色 */
+    --color-card-primary: #1e3a8a;
+    --color-card-ship: #92400e;
+    --color-card-save: #166534;
+    --color-card-info: #0e7490;
+    --color-card-query: #be185d;
+    --color-card-result: #7c3aed;
+    
+    /* 阴影 */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
 
-    /* 源码来自: icalingua */
-    --chat-color: #fff;
-    --chat-bg-color-input: #202223;
-    --chat-color-spinner: #fff;
-    --chat-color-placeholder: #596269;
-    --chat-color-caret: #fff;
-    --chat-border-style: none;
-    --chat-bg-scroll-icon: #fff;
-    --chat-container-border: none;
-    --chat-container-border-radius: 0;
-    --chat-container-box-shadow: none;
-    --chat-header-bg-color: #181a1b;
-    --chat-header-color-name: #fff;
-    --chat-header-color-info: #9ca6af;
-    --chat-footer-bg-color: #131415;
-    --chat-border-style-input: none;
-    --chat-border-color-input-selected: #1976d2;
-    --chat-footer-bg-color-reply: #1b1c1c;
-    --chat-footer-bg-color-tag-active: #1b1c1c;
-    --chat-content-bg-color: #131415;
-    --chat-sidemenu-bg-color: #181a1b;
-    --chat-sidemenu-bg-color-hover: #202224;
-    --chat-sidemenu-bg-color-active: #151617;
-    --chat-sidemenu-color-active: #fff;
-    --chat-sidemenu-border-color-search: #181a1b;
-    --chat-dropdown-bg-color: #2a2c33;
-    --chat-dropdown-bg-color-hover: #26282e;
-
-    --chat-message-bg-color: #22242a;
-    --chat-message-bg-color-me: #1f7e80;
-    --chat-message-color-started: #9ca6af;
-    --chat-message-bg-color-deleted: #1b1c21;
-    --chat-message-bg-color-selected: #c2dcf2;
-    --chat-message-color-deleted: #a2a5a8;
-    --chat-message-color-username: #b3bac9;
-    --chat-message-color-timestamp: #ebedf2;
-    --chat-message-bg-color-date: rgba(0, 0, 0, 0.3);
-    --chat-message-color-date: #bec5cc;
-    --chat-message-bg-color-system: rgba(0, 0, 0, 0.3);
-    --chat-message-color-system: #bec5cc;
-    --chat-message-color: #fff;
-    --chat-message-bg-color-media: rgba(0, 0, 0, 0.18);
-    --chat-message-bg-color-reply: rgba(0, 0, 0, 0.18);
-    --chat-message-color-reply-username: #fff;
-    --chat-message-color-reply-content: #d6d6d6;
-    --chat-message-color-tag: #f0c60a;
-    --chat-message-bg-color-image: #ddd;
-    --chat-message-color-new-messages: #fff;
-    --chat-message-bg-color-scroll-counter: #1976d2;
-    --chat-message-color-scroll-counter: #fff;
-    --chat-message-bg-color-reaction: none;
-    --chat-message-border-style-reaction: none;
-    --chat-message-bg-color-reaction-hover: #202223;
-    --chat-message-border-style-reaction-hover: none;
-    --chat-message-color-reaction-counter: #fff;
-    --chat-message-bg-color-reaction-me: #4e9ad1;
-    --chat-message-border-style-reaction-me: none;
-    --chat-message-bg-color-reaction-hover-me: #4e9ad1;
-    --chat-message-border-style-reaction-hover-me: none;
-    --chat-message-color-reaction-counter-me: #fff;
-
-    --chat-markdown-bg: rgba(239, 239, 239, 0.7);
-    --chat-markdown-border: rgba(212, 212, 212, 0.9);
-    --chat-markdown-color: #e01e5a;
-    --chat-markdown-color-multi: #0a0a0a;
-
-    --chat-room-color-username: #fff;
-    --chat-room-color-message: #6c7278;
-    --chat-room-color-timestamp: #6c7278;
-    --chat-room-color-online: #4caf50;
-    --chat-room-color-offline: #596269;
-    --chat-room-bg-color-badge: #1976d2;
-    --chat-room-color-badge: #fff;
-
-    --chat-emoji-bg-color: #343740;
-
-    --chat-icon-color-search: #596269;
-    --chat-icon-color-add: #fff;
-    --chat-icon-color-toggle: #fff;
-    --chat-icon-color-menu: #fff;
-    --chat-icon-color-close: #9ca6af;
-    --chat-icon-color-close-image: #fff;
-    --chat-icon-color-file: #1976d2;
-    --chat-icon-color-paperclip: #fff;
-    --chat-icon-color-close-outline: #fff;
-    --chat-icon-color-send: #fff;
-    --chat-icon-color-send-disabled: #646a70;
-    --chat-icon-color-emoji: #fff;
-    --chat-icon-color-emoji-reaction: #fff;
-    --chat-icon-color-document: #1976d2;
-    --chat-icon-color-pencil: #ebedf2;
-    --chat-icon-color-checkmark: #ebedf2;
-    --chat-icon-color-checkmark-seen: #f0d90a;
-    --chat-icon-color-eye: #fff;
-    --chat-icon-color-dropdown-message: #fff;
-    --chat-icon-bg-dropdown-message: rgba(0, 0, 0, 0.25);
-    --chat-icon-color-dropdown-room: #fff;
-    --chat-icon-color-dropdown-scroll: #0a0a0a;
-    --chat-icon-color-microphone: #fff;
-    --chat-icon-color-microphone-off: #eb4034;
-
-    --panel-background: #0D0E0F;
-    --panel-color-name: #F2F6FC;
-    --panel-color-username: #52a3e8;
-    --panel-color-icon: #C0C4CC;
-    --panel-color-desc: #b3bac9;
-    --panel-color-timestamp: #b3bac9;
-    --panel-item-bg: #22242a;
-    --panel-item-bg-hover: #1e1e25;
-    --panel-sidebar-bg: #000;
-    --panel-header-bg: #181A1B;
-    --panel-color-sticker-type: #C0C4CC;
-    --panel-color-sticker-type-selected: #409eff;
-    --panel-color-sticker-type-hover: #66b1ff;
-    --panel-color-navi-bottom-bar: #343536;
+/* 重置样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
+    font-family: var(--font-family-base);
     background-color: var(--color-bg-body);
     color: var(--color-text-primary);
+    line-height: 1.6;
     transition: background-color 0.3s ease, color 0.3s ease;
+    min-height: 100vh;
 }
 
-input {
+/* 页面布局 */
+.page-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+    padding: var(--spacing-xl) 0;
+}
+
+.page-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.page-subtitle {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+    font-weight: 400;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.page-footer {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+    margin-top: var(--spacing-2xl);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+}
+
+/* 卡片样式 */
+.card {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.card-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.card-content {
+   padding: var(--spacing-lg);
+   max-width: 900px;
+   margin-left: auto;
+   margin-right: auto;
+}
+
+/* 卡片主题样式 */
+.card-primary {
+    border-left: 4px solid var(--color-primary);
+}
+
+.card-ship {
+    border-left: 4px solid var(--color-warning);
+}
+
+.card-save {
+    border-left: 4px solid var(--color-success);
+}
+
+.card-info {
+    border-left: 4px solid var(--color-info);
+}
+
+.card-query {
+    border-left: 4px solid #ec4899;
+}
+
+.card-result {
+    border-left: 4px solid #8b5cf6;
+}
+
+/* 数据项样式 */
+.data-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.data-item:last-child {
+    border-bottom: none;
+}
+
+.data-label {
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+}
+
+.data-value {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+}
+
+/* 特殊数据样式 */
+.hash-value {
+    font-family: var(--font-family-mono);
+    font-size: 0.75rem;
+    background-color: var(--color-bg-secondary);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    word-break: break-all;
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: max-width 0.2s;
+}
+
+/* 展开时完整显示hash（自动换行） */
+.hash-value.expanded {
+    max-width: none;
+    overflow: visible;
+    text-overflow: initial;
+    white-space: normal;
+    word-break: break-all;
+}
+
+/* 展开时完整显示hash */
+.hash-value.expanded {
+    max-width: none;
+    overflow: visible;
+    text-overflow: initial;
+    white-space: pre-wrap;
+    background-color: var(--color-bg-secondary);
+}
+
+.status-badge {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-badge[data-status="true"] {
+    background-color: var(--color-success);
+    color: white;
+}
+
+.status-badge[data-status="false"] {
+    background-color: var(--color-danger);
+    color: white;
+}
+
+.version-badge {
+    background-color: var(--color-primary);
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--font-family-mono);
+}
+
+/* 布局样式 */
+.data-overview {
+    margin-bottom: var(--spacing-xl);
+}
+
+.data-categories {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+   gap: var(--spacing-lg);
+   margin-bottom: var(--spacing-xl);
+}
+
+.system-info {
+    margin-bottom: var(--spacing-xl);
+}
+
+.data-query {
+    margin-bottom: var(--spacing-xl);
+}
+
+.query-results {
+    margin-bottom: var(--spacing-xl);
+}
+
+/* 查询表单样式 */
+.query-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.input-group {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+.query-input {
+    flex: 1;
+    padding: var(--spacing-md);
+    border: 2px solid var(--color-input-border);
+    border-radius: var(--radius-md);
     background-color: var(--color-input-bg);
     color: var(--color-input-text);
-    border-color: var(--color-input-border);
+    font-size: 1rem;
+    transition: all 0.3s ease;
 }
 
-button {
+.query-input:focus {
+    outline: none;
+    border-color: var(--color-input-border-focus);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.query-input::placeholder {
+    color: var(--color-input-placeholder);
+}
+
+.query-button {
+    padding: var(--spacing-md) var(--spacing-lg);
     background-color: var(--color-button-bg);
+    color: var(--color-button-text);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
 }
 
-button:hover {
+.query-button:hover {
     background-color: var(--color-button-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
-.error {
-    color: var(--color-error);
+.query-button:active {
+    background-color: var(--color-button-active);
+    transform: translateY(0);
 }
 
+.query-button:disabled {
+    background-color: var(--color-text-muted);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.input-hint {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+/* 结果显示样式 */
+.result-display {
+    min-height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.result-placeholder {
+    text-align: center;
+    color: var(--color-text-muted);
+}
+
+.placeholder-icon {
+    font-size: 2rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.result-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    width: 100%;
+}
+
+.result-success {
+    border: 2px solid var(--color-success);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+.result-error {
+    border: 2px solid var(--color-danger);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--color-danger);
+}
+
+.result-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    color: var(--color-text-muted);
+}
+
+/* 加载动画 */
+.loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-border);
+    border-top: 2px solid var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 主题切换按钮 */
 .theme-toggle {
     position: fixed;
-    bottom: 20px;
-    left: 15px;
-    width: 40px;
-    height: 40px;
-    border-radius: 20%;
+    bottom: var(--spacing-lg);
+    right: var(--spacing-lg);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
     border: none;
+    background-color: var(--color-button-bg);
+    color: var(--color-button-text);
+    font-size: 1.5rem;
     cursor: pointer;
-    z-index: 1000;
+    box-shadow: var(--shadow-lg);
     transition: all 0.3s ease;
-    padding-left: 11px;
-}
-
-
-.container {
+    z-index: 1000;
     display: flex;
-    -ms-flex-direction: row;
-    flex-direction: row;
+    align-items: center;
     justify-content: center;
-    gap: 10px;
-    width: 100%;
-    margin: 0 auto;
 }
 
-.box,
-.box2 {
-    width: 40%;
-    padding: 20px;
-    flex-basis: 100%;
-    border: 2px solid #000;
-    text-align: center;
-    font-size: medium;
+.theme-toggle:hover {
+    background-color: var(--color-button-hover);
+    transform: scale(1.1);
 }
 
-.title {
-    font-size: 30px;
-    margin-bottom: 10px;
+.theme-toggle:active {
+    transform: scale(0.95);
 }
 
-.monospace {
-    font-family: monospace;
-    /* 启用等宽字体 */
-    border: 1px solid #000;
-    padding: 2px;
-    background-color: #f5f5f5;
-    font-size: small;
-    word-wrap: break-word;
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .page-container {
+        padding: var(--spacing-sm);
+    }
+    
+    .page-title {
+        font-size: 2rem;
+    }
+    
+    .data-categories {
+        grid-template-columns: 1fr;
+    }
+    
+    .input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .query-button {
+        width: 100%;
+    }
+    
+    .theme-toggle {
+        bottom: var(--spacing-md);
+        right: var(--spacing-md);
+    }
+    
+    .data-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+    
+   .hash-value {
+       max-width: 100%;
+   }
+    .card {
+        max-width: 100%;
+    }
 }
 
-.spacer {
-    height: 30px;
-    /* 设置行间距 */
+@media (max-width: 480px) {
+    .page-title {
+        font-size: 1.75rem;
+    }
+    
+    .card-content {
+        padding: var(--spacing-md);
+    }
+    
+    .card-header {
+        padding: var(--spacing-md);
+    }
 }
 
-.input-section {
-    flex-basis: 100%;
-    /* 占满宽度 */
-    padding: 20px;
-    border: 2px solid #000;
-    text-align: center;
-    font-size: 18px;
-    background-color: #ffcdd2;
-    /* 淡蓝色 */
+/* 打印样式 */
+@media print {
+    .theme-toggle {
+        display: none;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #000;
+    }
+    
+    .page-container {
+        max-width: none;
+        padding: 0;
+    }
 }
 
-.input-section input {
-    padding: 10px;
-    font-size: 18px;
-    margin-right: 10px;
+/* 可访问性增强 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
-.input-section button {
-    padding: 10px 20px;
-    font-size: 18px;
-    background-color: #b3ffe8;
-    /* 淡蓝色 */
-    border: none;
-    cursor: pointer;
-}
-
-.input-section button:hover {
-    background-color: #90caf9;
-    /* 深蓝色 */
-}
-
-.result-display {
-    flex-basis: 100%;
-    /* 占满宽度 */
-    width: 100%;
-    padding: 20px;
-    border: 2px solid #000;
-    text-align: center;
-    font-size: 24px;
-    background-color: #e1bee7;
-    /* 淡紫色 */
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+    :root {
+        --color-border: #000000;
+        --color-text-primary: #000000;
+        --color-bg-card: #ffffff;
+    }
+    
+    [data-theme="dark"] {
+        --color-border: #ffffff;
+        --color-text-primary: #ffffff;
+        --color-bg-card: #000000;
+    }
 }

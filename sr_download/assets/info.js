@@ -246,8 +246,10 @@ class DataQueryManager {
                 value.className = 'data-value';
                 if (item.isStatus) {
                     value.className += ' status-badge';
-                    value.setAttribute('data-status', item.value);
-                    value.textContent = item.value ? '通过' : '失败';
+                    const status = item.value ? 'ok' : 'failed';
+                    value.setAttribute('data-status', status);
+                    const displayText = item.value ? 'PASSED' : 'FAILED';
+                    value.textContent = displayText;
                 } else {
                     value.textContent = item.value;
                 }
@@ -481,13 +483,57 @@ function enhanceAllHashValues() {
                 btn.textContent = '显示全部';
             }
         };
- 
+
         valueWrap.appendChild(hashSpan);
         valueWrap.appendChild(btn);
- 
+
         // 替换原有el
         el.replaceWith(valueWrap);
     });
+    // 处理一下 status-badge
+    document.querySelectorAll('.status-badge').forEach(function (el) {
+      // AI 这么干的, 我觉得有道理, 所以也这么干了
+      if (el.dataset.updated === '1') return;
+      el.dataset.updated = '1';
+
+      const original_value = el.getAttribute('data-status');
+      let display_value = "FAILED";
+      let bg_color = 'var(--color-status-failed)';
+      let text_color = 'var(--color-status-failed-text)';
+
+      switch (original_value) {
+        case 'ok':
+          display_value = "PASSED";
+          bg_color = 'var(--color-status-passed)';
+          text_color = 'var(--color-status-passed-text)';
+          break;
+        case 'no data':
+          display_value = "NO DATA";
+          bg_color = 'var(--color-status-nodata)';
+          text_color = 'var(--color-status-nodata-text)';
+          break;
+        default:
+          display_value = original_value.toUpperCase();
+          break;
+      }
+
+      // 创建样式化的状态标签
+      const badge = document.createElement('span');
+      badge.textContent = display_value;
+      badge.style.display = 'inline-block';
+      badge.style.padding = '2px 8px';
+      badge.style.borderRadius = '12px';
+      badge.style.fontSize = '0.75rem';
+      badge.style.fontWeight = 'bold';
+      badge.style.backgroundColor = bg_color;
+      badge.style.color = text_color;
+      badge.style.textTransform = 'uppercase';
+      badge.style.letterSpacing = '0.5px';
+      badge.title = `Status: ${original_value}`;
+
+      // 替换原有元素
+      el.replaceWith(badge);
+    })
 }
 
 // 全局函数保持向后兼容

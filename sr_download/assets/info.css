@@ -7,6 +7,14 @@
     --color-danger: #ef4444;
     --color-info: #06b6d4;
     
+    /* 状态标签颜色 */
+    --color-status-passed: #dcfce7;
+    --color-status-passed-text: #166534;
+    --color-status-failed: #fee2e2;
+    --color-status-failed-text: #991b1b;
+    --color-status-nodata: #f3f4f6;
+    --color-status-nodata-text: #374151;
+    
     /* 明亮主题 */
     --color-bg-body: #f8fafc;
     --color-bg-container: #ffffff;
@@ -100,6 +108,14 @@
     --color-card-info: #0e7490;
     --color-card-query: #be185d;
     --color-card-result: #7c3aed;
+    
+    /* 状态标签颜色 - 暗黑主题 */
+    --color-status-passed: #065f46;
+    --color-status-passed-text: #34d399;
+    --color-status-failed: #7f1d1d;
+    --color-status-failed-text: #fca5a5;
+    --color-status-nodata: #1f2937;
+    --color-status-nodata-text: #9ca3af;
     
     /* 阴影 */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
@@ -302,16 +318,23 @@ body {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    display: inline-block;
 }
 
-.status-badge[data-status="true"] {
-    background-color: var(--color-success);
-    color: white;
+/* 根据状态设置不同的样式 */
+.status-badge[data-status="ok"] {
+    background-color: var(--color-status-passed);
+    color: var(--color-status-passed-text);
 }
 
-.status-badge[data-status="false"] {
-    background-color: var(--color-danger);
-    color: white;
+.status-badge[data-status="no data"] {
+    background-color: var(--color-status-nodata);
+    color: var(--color-status-nodata-text);
+}
+
+.status-badge:not([data-status="ok"]):not([data-status="no data"]) {
+    background-color: var(--color-status-failed);
+    color: var(--color-status-failed-text);
 }
 
 .version-badge {

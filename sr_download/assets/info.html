@@ -8,8 +8,8 @@
     </head>
 
     <body>
-        <script src="/assets/dark.js"></script>
-        <script src="/assets/info.js"></script>
+        <script src="/assets/dark.js" defer></script>
+        <script src="/assets/info.js" defer></script>
 
         <div class="page-container">
             <header class="page-header">
@@ -25,26 +25,28 @@
                             <h2 class="card-title">📊 最新数据</h2>
                         </div>
                         <div class="card-content">
-                            <div class="data-item">
-                                <span class="data-label">最大 ID</span>
-                                <span class="data-value">|MAX_ID|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">类型</span>
-                                <span class="data-value">|MAX_SAVE_TYPE|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">长度</span>
-                                <span class="data-value">|MAX_LEN|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">XML校验</span>
-                                <span class="data-value status-badge">|MAX_XML|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">Blake Hash</span>
-                                <span class="data-value hash-value">|MAX_HASH|</span>
-                            </div>
+                            <ul>
+                                <li class="data-item">
+                                    <span class="data-label">最大 ID</span>
+                                    <span class="data-value">|MAX_ID|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">类型</span>
+                                    <span class="data-value">|MAX_SAVE_TYPE|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">长度</span>
+                                    <span class="data-value">|MAX_LEN|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">XML校验</span>
+                                    <span class="data-value status-badge" data-status="|MAX_XML|"></span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">Blake Hash</span>
+                                    <span class="data-value hash-value">|MAX_HASH|</span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </section>
@@ -56,22 +58,24 @@
                             <h2 class="card-title">🚀 最新飞船</h2>
                         </div>
                         <div class="card-content">
-                            <div class="data-item">
-                                <span class="data-label">最大飞船 ID</span>
-                                <span class="data-value">|MAX_SHIP_ID|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">长度</span>
-                                <span class="data-value">|MAX_SHIP_LEN|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">XML校验</span>
-                                <span class="data-value status-badge">|MAX_SHIP_XML|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">Blake Hash</span>
-                                <span class="data-value hash-value">|MAX_SHIP_HASH|</span>
-                            </div>
+                            <ul>
+                                <li class="data-item">
+                                    <span class="data-label">最大飞船 ID</span>
+                                    <span class="data-value">|MAX_SHIP_ID|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">长度</span>
+                                    <span class="data-value">|MAX_SHIP_LEN|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">XML校验</span>
+                                    <span class="data-value status-badge" data-status="|MAX_SHIP_XML|"></span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">Blake Hash</span>
+                                    <span class="data-value hash-value">|MAX_SHIP_HASH|</span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
 
@@ -80,22 +84,24 @@
                             <h2 class="card-title">💾 最新存档</h2>
                         </div>
                         <div class="card-content">
-                            <div class="data-item">
-                                <span class="data-label">最大存档 ID</span>
-                                <span class="data-value">|MAX_SAVE_ID|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">长度</span>
-                                <span class="data-value">|MAX_SAVE_LEN|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">XML校验</span>
-                                <span class="data-value status-badge">|MAX_SAVE_XML|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">Blake Hash</span>
-                                <span class="data-value hash-value">|MAX_SAVE_HASH|</span>
-                            </div>
+                            <ul>
+                                <li class="data-item">
+                                    <span class="data-label">最大存档 ID</span>
+                                    <span class="data-value">|MAX_SAVE_ID|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">长度</span>
+                                    <span class="data-value">|MAX_SAVE_LEN|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">XML校验</span>
+                                    <span class="data-value status-badge" data-status="|MAX_SAVE_XML|"></span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">Blake Hash</span>
+                                    <span class="data-value hash-value">|MAX_SAVE_HASH|</span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </section>
@@ -107,26 +113,28 @@
                             <h2 class="card-title">ℹ️ 系统信息</h2>
                         </div>
                         <div class="card-content">
-                            <div class="data-item">
-                                <span class="data-label">请求用时</span>
-                                <span class="data-value">|COST_TIME|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">网页请求次数</span>
-                                <span class="data-value">|WEB_REQUEST_COUNT|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">API请求次数</span>
-                                <span class="data-value">|API_REQUEST_COUNT|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">服务运行时间</span>
-                                <span class="data-value">|SERVICE_UPTIME|</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">版本号</span>
-                                <span class="data-value version-badge">|VERSION|</span>
-                            </div>
+                            <ul>
+                                <li class="data-item">
+                                    <span class="data-label">请求用时</span>
+                                    <span class="data-value">|COST_TIME|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">网页请求次数</span>
+                                    <span class="data-value">|WEB_REQUEST_COUNT|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">API请求次数</span>
+                                    <span class="data-value">|API_REQUEST_COUNT|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">服务运行时间</span>
+                                    <span class="data-value">|SERVICE_UPTIME|</span>
+                                </li>
+                                <li class="data-item">
+                                    <span class="data-label">版本号</span>
+                                    <span class="data-value version-badge">|VERSION|</span>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </section>
@@ -140,6 +148,7 @@
                         <div class="card-content">
                             <div class="query-form">
                                 <div class="input-group">
+                                    <label for="dataId">数据 ID:</label>
                                     <input
                                         type="number"
                                         id="dataId"

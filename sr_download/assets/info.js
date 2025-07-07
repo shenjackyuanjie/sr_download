@@ -14,11 +14,11 @@ class DataQueryManager {
     bindEvents() {
         const queryButton = document.querySelector('.query-button');
         const queryInput = document.getElementById('dataId');
-        
+
         if (queryButton) {
             queryButton.addEventListener('click', () => this.fetchData());
         }
-        
+
         if (queryInput) {
             queryInput.addEventListener('input', (e) => this.validateInput(e.target));
         }
@@ -38,10 +38,10 @@ class DataQueryManager {
     validateInput(input) {
         const value = parseInt(input.value);
         const minId = 76858;
-        
+
         // 清除之前的错误样式
         input.classList.remove('error');
-        
+
         if (input.value && (isNaN(value) || value < minId)) {
             input.classList.add('error');
             this.showInputError(`ID 必须是不小于 ${minId} 的数字`);
@@ -58,7 +58,7 @@ class DataQueryManager {
             errorDiv.style.color = 'var(--color-danger)';
             errorDiv.style.fontSize = '0.875rem';
             errorDiv.style.marginTop = 'var(--spacing-xs)';
-            
+
             const inputGroup = document.querySelector('.input-group');
             if (inputGroup) {
                 inputGroup.parentNode.insertBefore(errorDiv, inputGroup.nextSibling);
@@ -120,14 +120,14 @@ class DataQueryManager {
         this.isLoading = loading;
         const button = document.querySelector('.query-button');
         const input = document.getElementById('dataId');
-        
+
         if (button) {
             button.disabled = loading;
-            button.innerHTML = loading ? 
-                '<span class="loading-spinner"></span> 查询中...' : 
+            button.innerHTML = loading ?
+                '<span class="loading-spinner"></span> 查询中...' :
                 '查询数据';
         }
-        
+
         if (input) {
             input.disabled = loading;
         }
@@ -167,14 +167,14 @@ class DataQueryManager {
     createSuccessResult(data) {
         const container = document.createElement('div');
         container.className = 'result-success';
-        
+
         const title = document.createElement('h3');
         title.textContent = '查询成功';
         title.style.marginBottom = 'var(--spacing-md)';
         title.style.color = 'var(--color-success)';
         container.appendChild(title);
 
-        const dataContainer = document.createElement('div');
+        const dataContainer = document.createElement('ul'); // Changed from div to ul
         dataContainer.className = 'result-content';
 
         const dataItems = [
@@ -186,7 +186,7 @@ class DataQueryManager {
         ];
 
         dataItems.forEach(item => {
-            const dataItem = document.createElement('div');
+            const dataItem = document.createElement('li'); // Changed from div to li
             dataItem.className = 'data-item';
 
             const label = document.createElement('span');
@@ -264,7 +264,7 @@ class DataQueryManager {
     createErrorResult(message) {
         const container = document.createElement('div');
         container.className = 'result-error';
-        
+
         const title = document.createElement('h3');
         title.textContent = '查询失败';
         title.style.marginBottom = 'var(--spacing-md)';
@@ -288,7 +288,7 @@ class DataQueryManager {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
-        
+
         // 样式
         Object.assign(notification.style, {
             position: 'fixed',
@@ -386,7 +386,7 @@ class ThemeManager {
 
     updateThemeBasedContent() {
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        
+
         // 更新状态徽章样式
         const statusBadges = document.querySelectorAll('.status-badge');
         statusBadges.forEach(badge => {
@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
     new ThemeManager();
     enhanceAllHashValues();
     // 添加页面加载完成提示
-    console.log('sr-download 信息面板已加载完成');
+    console.log('sr-download 信息面板已加载完成 powered by AI');
 });
 
 /**
@@ -433,25 +433,25 @@ function enhanceAllHashValues() {
     // 只处理未被增强过的hash-value
     document.querySelectorAll('.hash-value').forEach(function (el) {
         // 避免重复增强
-        if (el.dataset.hashEnhanced === '1') return;
-        el.dataset.hashEnhanced = '1';
- 
+        if (el.dataset.updated === '1') return;
+        el.dataset.updated = '1';
+
         const fullHash = el.textContent.trim();
         if (!fullHash || fullHash.length <= 16) return; // 不需要截断
- 
+
         const shortHash = fullHash.substring(0, 8) + '...' + fullHash.substring(fullHash.length - 8);
- 
+
         // 创建包裹
         const valueWrap = document.createElement('span');
         valueWrap.style.display = 'inline-flex';
         valueWrap.style.alignItems = 'center';
- 
+
         // 创建hash显示span
         const hashSpan = document.createElement('span');
         hashSpan.className = 'hash-value';
         hashSpan.textContent = shortHash;
         hashSpan.title = fullHash;
- 
+
         // 创建按钮
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -467,7 +467,7 @@ function enhanceAllHashValues() {
         btn.style.transition = 'background 0.2s';
         btn.onmouseenter = () => btn.style.background = 'var(--color-button-hover)';
         btn.onmouseleave = () => btn.style.background = 'var(--color-button-bg)';
- 
+
         let expanded = false;
         btn.onclick = () => {
             expanded = !expanded;
@@ -495,8 +495,3 @@ window.fetchData = function() {
     const manager = new DataQueryManager();
     manager.fetchData();
 };
-
-// 导出类以便在其他地方使用
-window.DataQueryManager = DataQueryManager;
-window.DataFormatter = DataFormatter;
-window.ThemeManager = ThemeManager;

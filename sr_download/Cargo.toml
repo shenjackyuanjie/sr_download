@@ -18,7 +18,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3.18", features = ["local-time"] }
 
 futures = "0.3"
-tokio = { version = "1.44", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 anyhow = { version = "1.0", features = ["backtrace"] }
 
 axum = "0.8"
@@ -29,9 +29,9 @@ sea-orm = { version = "1.1", features = [
 migration = { path = "../migration" }
 
 serde = { version = "1.0", features = ["serde_derive"] }
-toml = "0.8"
+toml = "0.9"
 blake3 = "1.6"
-quick-xml = { version = "0.37" }
+quick-xml = { version = "0.38" }
 chrono = "0.4"
 humantime = "2.2"
-clap = "4.5.40"
+clap = "4"

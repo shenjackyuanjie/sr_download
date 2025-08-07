@@ -17,13 +17,15 @@ async fn big_worker(
 ) {
     for work_id in work_range {
         let exist_len = db_part::check_data_len(&db, work_id).await;
-        if let Some(len) = exist_len && len > 0 {
-                event!(
-                    Level::INFO,
-                    "{}",
-                    format!("Skip download {work_id} with exist data").blue()
-                );
-                continue;
+        if let Some(len) = exist_len
+            && len > 0
+        {
+            event!(
+                Level::INFO,
+                "{}",
+                format!("Skip download {work_id} with exist data").blue()
+            );
+            continue;
         }
         match match client.try_download_as_any(work_id).await {
             Some(file) => {

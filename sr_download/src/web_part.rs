@@ -1,6 +1,6 @@
 use std::{
     io::Write,
-    sync::{LazyLock, OnceLock, atomic::AtomicU64},
+    sync::{atomic::AtomicU64, Arc, LazyLock, OnceLock},
     time::Duration,
 };
 
@@ -26,6 +26,7 @@ use crate::{
 use migration::SaveId;
 
 pub mod assets;
+pub mod cache;
 pub mod traits;
 
 /// 网页请求总计数器
@@ -447,6 +448,7 @@ pub async fn web_main() -> anyhow::Result<()> {
 
     let listener = tokio::net::TcpListener::bind(conf.serve.host_with_port.clone()).await?;
     let db = db_part::connect_server(conf).await?;
+    let cache = cache::WebCache::new(&db, Duration::from_micros(conf.serve.refresh_interval as u64)).await;
     let app = Router::new()
         // 获取最后一个数据
         .route("/last/data", get(get_last_data).post(get_last_data))
@@ -492,7 +494,8 @@ pub async fn web_main() -> anyhow::Result<()> {
             get(jump_to_dashboard_from_root).post(jump_to_dashboard_from_root),
         )
         // db
-        .with_state(db);
+        .with_state(db)
+        .with_state(Arc::new(cache));
 
     event!(
         Level::INFO,

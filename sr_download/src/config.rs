@@ -91,6 +91,10 @@ pub mod serve_config {
         LONG_TOKEN.to_string()
     }
 
+    pub fn 十秒() -> u32 {
+        10_000
+    }
+
     #[derive(Serialize, Deserialize, Debug, Clone)]
     #[serde(rename = "serve")]
     pub struct ServeConfig {
@@ -102,6 +106,8 @@ pub mod serve_config {
         pub enable: bool,
         #[serde(default = "loong_token")]
         pub resync_token: String,
+        #[serde(default = "十秒")]
+        pub refresh_interval: u32,
     }
 
     impl Default for ServeConfig {
@@ -111,6 +117,7 @@ pub mod serve_config {
                 db_max_connect: default_serve_connect(),
                 enable: just_false(),
                 resync_token: loong_token(),
+                refresh_interval: 十秒(),
             }
         }
     }

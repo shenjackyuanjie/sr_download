@@ -1,13 +1,13 @@
 use std::{sync::atomic::AtomicBool, time::Duration};
 
-use sea_orm::DatabaseConnection;
+use sqlx::PgPool;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
 pub struct CacheData {}
 
 impl CacheData {
-    pub async fn new_from_db(db: &DatabaseConnection) -> Self {
+    pub async fn new_from_db(_db: &PgPool) -> Self {
         Self {}
     }
 }
@@ -20,7 +20,7 @@ pub struct WebCache {
 }
 
 impl WebCache {
-    pub async fn new(db: &DatabaseConnection, refresh_interval: Duration) -> Self {
+    pub async fn new(db: &PgPool, refresh_interval: Duration) -> Self {
         let cache = CacheData::new_from_db(db).await;
         Self {
             updating: AtomicBool::new(false),

@@ -1,32 +1,45 @@
 use blake3::Hasher;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, EntityTrait,
-    IntoActiveModel, ModelTrait, QueryFilter, QuerySelect, Statement, TransactionTrait,
-};
-use tracing::{Level, event};
+use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, PgPool};
 
 use crate::config::ConfigFile;
-use crate::model;
-pub use crate::model::sea_orm_active_enums::SaveType;
-use migration::{FULL_DATA_VIEW, SaveId, TEXT_DATA_MAX_LEN};
+pub use defines::{SaveId, TEXT_DATA_MAX_LEN};
 
 pub mod defines;
 pub mod search;
 pub mod updates;
 pub mod utils;
 
-pub use utils::{connect, connect_server, migrate};
+pub use utils::{connect, connect_server};
 
-pub async fn full_update(db: &DatabaseConnection, conf: &ConfigFile) {
-    // sea_orm 的迁移
-    if let Err(e) = migrate(db).await {
-        event!(Level::ERROR, "sea_orm 迁移失败: {:?}", e);
-    };
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(type_name = "save_type", rename_all = "lowercase")]
+pub enum SaveType {
+    None,
+    Save,
+    Ship,
+    Unknown,
+}
 
-    // 自己的迁移
+impl SaveType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Save => "save",
+            Self::Ship => "ship",
+            Self::Unknown => "unknown",
+        }
+    }
+}
+
+impl std::fmt::Display for SaveType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+pub async fn full_update(db: &PgPool, conf: &ConfigFile) {
     updates::update_db(db, conf).await;
-
-    // 数据更新
     utils::check_null_data(db).await;
     utils::update_xml_tested(db).await;
 }
@@ -42,10 +55,30 @@ pub struct DbData {
     pub xml_tested: bool,
 }
 
-impl From<model::main_data::Model> for DbData {
-    fn from(data: model::main_data::Model) -> Self {
+#[derive(Debug, FromRow)]
+struct FullDataRow {
+    data: Option<String>,
+    save_id: i32,
+    save_type: SaveType,
+    len: i64,
+    blake_hash: String,
+    xml_tested: Option<bool>,
+}
+
+#[derive(Debug, FromRow)]
+struct ExistingMainDataRow {
+    save_id: i32,
+    save_type: SaveType,
+    blake_hash: String,
+    len: i64,
+    short_data: Option<String>,
+    xml_tested: Option<bool>,
+}
+
+impl From<FullDataRow> for DbData {
+    fn from(data: FullDataRow) -> Self {
         Self {
-            text: data.short_data,
+            text: data.data,
             save_id: data.save_id as SaveId,
             save_type: data.save_type,
             len: data.len,
@@ -55,15 +88,15 @@ impl From<model::main_data::Model> for DbData {
     }
 }
 
-impl From<(model::main_data::Model, model::long_data::Model)> for DbData {
-    fn from(data: (model::main_data::Model, model::long_data::Model)) -> Self {
+impl From<ExistingMainDataRow> for DbData {
+    fn from(data: ExistingMainDataRow) -> Self {
         Self {
-            text: Some(data.1.text),
-            save_id: data.0.save_id as SaveId,
-            save_type: data.0.save_type,
-            len: data.0.len,
-            blake_hash: data.0.blake_hash,
-            xml_tested: data.0.xml_tested.unwrap_or(false),
+            text: data.short_data,
+            save_id: data.save_id as SaveId,
+            save_type: data.save_type,
+            len: data.len,
+            blake_hash: data.blake_hash,
+            xml_tested: data.xml_tested.unwrap_or(false),
         }
     }
 }
@@ -123,47 +156,32 @@ impl DbData {
     }
 
     /// 直接从 full_data 里选即可
-    pub async fn from_db(save_id: SaveId, db: &DatabaseConnection) -> Option<Self> {
-        let sql = format!(
-            r#"SELECT "data","save_id","save_type"::"varchar","len","blake_hash" FROM {FULL_DATA_VIEW} WHERE save_id = {save_id}"#,
-        );
-
-        let datas = db
-            .query_one(Statement::from_string(
-                sea_orm::DatabaseBackend::Postgres,
-                sql,
-            ))
-            .await
-            .ok()??;
-        let text = datas.try_get("", "data").ok()?;
-        let save_id: i32 = datas.try_get("", "save_id").ok()?;
-        let save_type: SaveType = datas.try_get("", "save_type").ok()?;
-        let len: i64 = datas.try_get("", "len").ok()?;
-        let blake_hash: String = datas.try_get("", "blake_hash").ok()?;
-        let xml_tested: Option<bool> = datas.try_get("", "xml_tested").ok()?;
-        Some(Self {
-            text,
-            save_id: save_id as SaveId,
-            save_type,
-            len,
-            blake_hash,
-            xml_tested: xml_tested.unwrap_or(false),
-        })
+    pub async fn from_db(save_id: SaveId, db: &PgPool) -> Option<Self> {
+        sqlx::query_as::<_, FullDataRow>(
+            "SELECT data, save_id, save_type, len, blake_hash, xml_tested
+             FROM full_data
+             WHERE save_id = $1",
+        )
+        .bind(save_id as i32)
+        .fetch_optional(db)
+        .await
+        .ok()?
+        .map(Into::into)
     }
 }
 
-pub async fn check_data_len(db: &DatabaseConnection, save_id: SaveId) -> Option<i64> {
-    // SELECT save_id from main_data WHERE save_id = $1 AND len > 0
-    model::main_data::Entity::find()
-        .filter(model::main_data::Column::SaveId.eq(save_id as i32))
-        .select_only()
-        .column(model::main_data::Column::Len)
-        .limit(1)
-        .into_tuple()
-        .one(db)
-        .await
-        .ok()
-        .flatten()
+pub async fn check_data_len(db: &PgPool, save_id: SaveId) -> Option<i64> {
+    sqlx::query_scalar::<_, i64>(
+        "SELECT len
+         FROM main_data
+         WHERE save_id = $1
+         LIMIT 1",
+    )
+    .bind(save_id as i32)
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
 }
 
 #[allow(unused)]
@@ -189,7 +207,7 @@ pub async fn save_data_to_db<T, D>(
     save_type: T,
     data: D,
     cover_strategy: Option<CoverStrategy>,
-    db: &DatabaseConnection,
+    db: &PgPool,
 ) -> anyhow::Result<bool>
 where
     D: Into<String>,
@@ -200,15 +218,15 @@ where
     let cover_strategy = cover_strategy.unwrap_or_default();
     let time = chrono::Utc::now();
     let save_type: SaveType = save_type.into();
-    let exitst_data: Option<model::main_data::Model> = {
-        model::main_data::Entity::find()
-            .filter(model::main_data::Column::SaveId.eq(save_id as i32))
-            .limit(1)
-            .one(db)
-            .await
-            .ok()
-            .flatten()
-    };
+    let exitst_data = sqlx::query_as::<_, ExistingMainDataRow>(
+        "SELECT save_id, save_type, blake_hash, len, short_data, xml_tested
+         FROM main_data
+         WHERE save_id = $1
+         LIMIT 1",
+    )
+    .bind(save_id as i32)
+    .fetch_optional(db)
+    .await?;
     if exitst_data.is_some() {
         match cover_strategy {
             CoverStrategy::Error => return Err(anyhow::anyhow!("Data already exists")),
@@ -225,13 +243,8 @@ where
     hasher.update(data.as_bytes());
     let hash = hasher.finalize().to_hex().to_string();
 
-    if db.ping().await.is_err() {
-        return Err(anyhow::anyhow!("Database connection is broken"));
-    }
-    let stuf = db.begin().await?;
-
-    // 开个事务
-    // 然后检测一下是否需要覆盖
+    sqlx::query("SELECT 1").execute(db).await?;
+    let mut tx = db.begin().await?;
 
     if exitst_data.is_some()
         && matches!(
@@ -245,56 +258,61 @@ where
             && matches!(cover_strategy, CoverStrategy::CoverIfDifferent)
         {
             // 数据一样, 不需要覆盖
-            stuf.commit().await?;
+            tx.commit().await?;
             return Ok(false);
         }
-        // 数据不一致, 需要覆盖
-        // 先删除旧数据
         if exitst_data.len > TEXT_DATA_MAX_LEN as i64 {
-            // 长数据, 先删 long data
-            model::long_data::Entity::delete_by_id(save_id as i32)
-                .exec(db)
+            sqlx::query("DELETE FROM long_data WHERE save_id = $1")
+                .bind(save_id as i32)
+                .execute(&mut *tx)
                 .await?;
         }
-        exitst_data.delete(db).await?;
+        sqlx::query("DELETE FROM main_data WHERE save_id = $1")
+            .bind(save_id as i32)
+            .execute(&mut *tx)
+            .await?;
     }
 
     let xml_tested = Some(utils::verify_xml(&data).is_ok());
 
     if data_len > TEXT_DATA_MAX_LEN {
-        // 过长, 需要把数据放到 long_data 里
-        let new_data = model::main_data::Model {
-            save_id: save_id as i32,
-            save_type,
-            blake_hash: hash,
-            len: data_len as i64,
-            short_data: None,
-            xml_tested,
-            time: time.into(),
-        };
-        let long_data = model::long_data::Model {
-            save_id: save_id as i32,
-            len: data_len as i64,
-            text: data,
-        };
-        // 先插入 new_data
-        // 然后插入 long_data
-        new_data.into_active_model().insert(db).await?;
-        long_data.into_active_model().insert(db).await?;
+        sqlx::query(
+            "INSERT INTO main_data
+             (save_id, save_type, blake_hash, len, short_data, xml_tested, time)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        )
+        .bind(save_id as i32)
+        .bind(save_type)
+        .bind(&hash)
+        .bind(data_len as i64)
+        .bind(Option::<String>::None)
+        .bind(xml_tested)
+        .bind(time)
+        .execute(&mut *tx)
+        .await?;
+        sqlx::query("INSERT INTO long_data (save_id, len, text) VALUES ($1, $2, $3)")
+            .bind(save_id as i32)
+            .bind(data_len as i64)
+            .bind(data)
+            .execute(&mut *tx)
+            .await?;
     } else {
-        // 直接放到 main_data 里即可
-        let new_data = model::main_data::Model {
-            save_id: save_id as i32,
-            save_type,
-            blake_hash: hash,
-            len: data_len as i64,
-            short_data: Some(data),
-            xml_tested,
-            time: time.into(),
-        };
-        new_data.into_active_model().insert(db).await?;
+        sqlx::query(
+            "INSERT INTO main_data
+             (save_id, save_type, blake_hash, len, short_data, xml_tested, time)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        )
+        .bind(save_id as i32)
+        .bind(save_type)
+        .bind(hash)
+        .bind(data_len as i64)
+        .bind(Some(data))
+        .bind(xml_tested)
+        .bind(time)
+        .execute(&mut *tx)
+        .await?;
     }
-    stuf.commit().await?;
+    tx.commit().await?;
 
     Ok(true)
 }

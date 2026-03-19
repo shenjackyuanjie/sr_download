@@ -23,7 +23,8 @@
     // 更新切换按钮
     function updateToggleButton(theme) {
         toggleButton.textContent = theme === 'dark' ? '🌞' : '🌙';
-        toggleButton.style.backgroundColor = `var(--color-button-bg)`;
+        toggleButton.setAttribute('aria-label', theme === 'dark' ? '切换到浅色模式' : '切换到深色模式');
+        toggleButton.setAttribute('title', theme === 'dark' ? '切换到浅色模式' : '切换到深色模式');
     }
 
     // 创建切换按钮
@@ -43,7 +44,9 @@
     // 系统主题变化监听
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
         if (!localStorage.getItem(storageKey)) {
-            document.documentElement.setAttribute(themeAttribute, e.matches ? 'dark' : 'light');
+            const theme = e.matches ? 'dark' : 'light';
+            document.documentElement.setAttribute(themeAttribute, theme);
+            updateToggleButton(theme);
         }
     });
 

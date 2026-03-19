@@ -1,4 +1,4 @@
-use migration::SaveId;
+use crate::SaveId;
 use std::{
     path::{Path, PathBuf},
     sync::OnceLock,

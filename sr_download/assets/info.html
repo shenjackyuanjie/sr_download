@@ -3,196 +3,153 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>sr-download 信息页面</title>
+        <title>sr-download Control Room</title>
         <link rel="stylesheet" href="/assets/info.css" />
     </head>
-
     <body>
         <script src="/assets/dark.js" defer></script>
         <script src="/assets/info.js" defer></script>
 
-        <div class="page-container">
-            <header class="page-header">
-                <h1 class="page-title">sr-download 信息面板</h1>
-                <p class="page-subtitle">实时数据监控与查询</p>
+        <div class="noise"></div>
+        <div class="shell">
+            <header class="hero">
+                <div class="hero__eyebrow">SimpleRockets Archive Monitor</div>
+                <div class="hero__main">
+                    <div>
+                        <h1>sr-download Control Room</h1>
+                        <p class="hero__copy">
+                            一个重新整理过的监控台。页面只负责渲染，数据全部通过新 API 拉取。
+                        </p>
+                    </div>
+                    <div class="hero__meta">
+                        <div class="meta-chip">
+                            <span class="meta-chip__label">Version</span>
+                            <span id="service-version">-</span>
+                        </div>
+                        <div class="meta-chip">
+                            <span class="meta-chip__label">Uptime</span>
+                            <span id="service-uptime">-</span>
+                        </div>
+                    </div>
+                </div>
             </header>
 
-            <main class="main-content">
-                <!-- 最新数据概览 -->
-                <section class="data-overview">
-                    <div class="card card-primary">
-                        <div class="card-header">
-                            <h2 class="card-title">📊 最新数据</h2>
+            <main class="grid">
+                <section class="panel panel--accent panel--hero">
+                    <div class="panel__head">
+                        <div>
+                            <p class="panel__kicker">Live Overview</p>
+                            <h2>实时总览</h2>
                         </div>
-                        <div class="card-content">
-                            <ul>
-                                <li class="data-item">
-                                    <span class="data-label">最大 ID</span>
-                                    <span class="data-value">|MAX_ID|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">类型</span>
-                                    <span class="data-value">|MAX_SAVE_TYPE|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">长度</span>
-                                    <span class="data-value">|MAX_LEN|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">XML校验</span>
-                                    <span class="data-value status-badge" data-status="|MAX_XML|"></span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">Blake Hash</span>
-                                    <span class="data-value hash-value">|MAX_HASH|</span>
-                                </li>
-                            </ul>
+                        <button class="ghost-button" id="refresh-overview" type="button">刷新</button>
+                    </div>
+                    <div class="stats-strip">
+                        <div class="stat-tile">
+                            <span class="stat-tile__label">Web Requests</span>
+                            <strong id="web-requests">-</strong>
                         </div>
+                        <div class="stat-tile">
+                            <span class="stat-tile__label">API Requests</span>
+                            <strong id="api-requests">-</strong>
+                        </div>
+                        <div class="stat-tile">
+                            <span class="stat-tile__label">Min Lookup Id</span>
+                            <strong id="min-lookup-id">-</strong>
+                        </div>
+                    </div>
+                    <div class="cards" id="overview-cards">
+                        <article class="overview-card">
+                            <p class="overview-card__tag">Latest Data</p>
+                            <h3 id="latest-data-id">Loading</h3>
+                            <p id="latest-data-type" class="overview-card__subtle">-</p>
+                            <dl class="metric-list">
+                                <div><dt>Length</dt><dd id="latest-data-len">-</dd></div>
+                                <div><dt>XML</dt><dd id="latest-data-xml">-</dd></div>
+                                <div><dt>Hash</dt><dd id="latest-data-hash">-</dd></div>
+                            </dl>
+                        </article>
+                        <article class="overview-card">
+                            <p class="overview-card__tag">Latest Ship</p>
+                            <h3 id="latest-ship-id">Loading</h3>
+                            <p class="overview-card__subtle">Most recent ship payload</p>
+                            <dl class="metric-list">
+                                <div><dt>Length</dt><dd id="latest-ship-len">-</dd></div>
+                                <div><dt>XML</dt><dd id="latest-ship-xml">-</dd></div>
+                                <div><dt>Hash</dt><dd id="latest-ship-hash">-</dd></div>
+                            </dl>
+                        </article>
+                        <article class="overview-card">
+                            <p class="overview-card__tag">Latest Save</p>
+                            <h3 id="latest-save-id">Loading</h3>
+                            <p class="overview-card__subtle">Most recent save payload</p>
+                            <dl class="metric-list">
+                                <div><dt>Length</dt><dd id="latest-save-len">-</dd></div>
+                                <div><dt>XML</dt><dd id="latest-save-xml">-</dd></div>
+                                <div><dt>Hash</dt><dd id="latest-save-hash">-</dd></div>
+                            </dl>
+                        </article>
                     </div>
                 </section>
 
-                <!-- 分类数据 -->
-                <section class="data-categories">
-                    <div class="card card-ship">
-                        <div class="card-header">
-                            <h2 class="card-title">🚀 最新飞船</h2>
-                        </div>
-                        <div class="card-content">
-                            <ul>
-                                <li class="data-item">
-                                    <span class="data-label">最大飞船 ID</span>
-                                    <span class="data-value">|MAX_SHIP_ID|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">长度</span>
-                                    <span class="data-value">|MAX_SHIP_LEN|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">XML校验</span>
-                                    <span class="data-value status-badge" data-status="|MAX_SHIP_XML|"></span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">Blake Hash</span>
-                                    <span class="data-value hash-value">|MAX_SHIP_HASH|</span>
-                                </li>
-                            </ul>
+                <section class="panel">
+                    <div class="panel__head">
+                        <div>
+                            <p class="panel__kicker">Record Explorer</p>
+                            <h2>按 ID 检索</h2>
                         </div>
                     </div>
-
-                    <div class="card card-save">
-                        <div class="card-header">
-                            <h2 class="card-title">💾 最新存档</h2>
+                    <form id="lookup-form" class="lookup">
+                        <label class="lookup__label" for="record-id">Record ID</label>
+                        <div class="lookup__row">
+                            <input id="record-id" name="record-id" type="number" min="76858" placeholder="例如 1294489" />
+                            <button type="submit" class="primary-button">查询</button>
                         </div>
-                        <div class="card-content">
-                            <ul>
-                                <li class="data-item">
-                                    <span class="data-label">最大存档 ID</span>
-                                    <span class="data-value">|MAX_SAVE_ID|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">长度</span>
-                                    <span class="data-value">|MAX_SAVE_LEN|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">XML校验</span>
-                                    <span class="data-value status-badge" data-status="|MAX_SAVE_XML|"></span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">Blake Hash</span>
-                                    <span class="data-value hash-value">|MAX_SAVE_HASH|</span>
-                                </li>
-                            </ul>
-                        </div>
+                        <p class="lookup__hint">新接口会请求 `/api/records/{id}`，原有 `/info/{id}` 仍保留兼容。</p>
+                    </form>
+                    <div id="lookup-result" class="result-card result-card--idle">
+                        <p>输入一个 ID 以查看元数据和原始内容预览。</p>
                     </div>
                 </section>
 
-                <!-- 系统信息 -->
-                <section class="system-info">
-                    <div class="card card-info">
-                        <div class="card-header">
-                            <h2 class="card-title">ℹ️ 系统信息</h2>
+                <section class="panel">
+                    <div class="panel__head">
+                        <div>
+                            <p class="panel__kicker">Public API</p>
+                            <h2>新接口</h2>
                         </div>
-                        <div class="card-content">
-                            <ul>
-                                <li class="data-item">
-                                    <span class="data-label">请求用时</span>
-                                    <span class="data-value">|COST_TIME|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">网页请求次数</span>
-                                    <span class="data-value">|WEB_REQUEST_COUNT|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">API请求次数</span>
-                                    <span class="data-value">|API_REQUEST_COUNT|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">服务运行时间</span>
-                                    <span class="data-value">|SERVICE_UPTIME|</span>
-                                </li>
-                                <li class="data-item">
-                                    <span class="data-label">版本号</span>
-                                    <span class="data-value version-badge">|VERSION|</span>
-                                </li>
-                            </ul>
-                        </div>
+                    </div>
+                    <div class="api-list">
+                        <article class="api-item">
+                            <code>GET /api/overview</code>
+                            <p>返回首页所需的总览数据：最新数据、最新飞船、最新存档、服务指标。</p>
+                        </article>
+                        <article class="api-item">
+                            <code>GET /api/service</code>
+                            <p>返回版本、运行时间、请求计数和最小查询 ID。</p>
+                        </article>
+                        <article class="api-item">
+                            <code>GET /api/records/{id}</code>
+                            <p>返回单条记录的元数据、XML 状态和可选原始内容。</p>
+                        </article>
+                        <article class="api-item">
+                            <code>GET /api/records/{id}/raw</code>
+                            <p>返回兼容旧下载逻辑的原始正文载荷。</p>
+                        </article>
                     </div>
                 </section>
 
-                <!-- 数据查询 -->
-                <section class="data-query">
-                    <div class="card card-query">
-                        <div class="card-header">
-                            <h2 class="card-title">🔍 数据查询</h2>
-                        </div>
-                        <div class="card-content">
-                            <div class="query-form">
-                                <div class="input-group">
-                                    <label for="dataId">数据 ID:</label>
-                                    <input
-                                        type="number"
-                                        id="dataId"
-                                        class="query-input"
-                                        placeholder="请输入数据 ID"
-                                        min="76858"
-                                    />
-                                    <button
-                                        type="button"
-                                        class="query-button"
-                                        onclick="fetchData()"
-                                    >
-                                        查询数据
-                                    </button>
-                                </div>
-                                <div class="input-hint">
-                                    <small>最小 ID: 76858</small>
-                                </div>
-                            </div>
+                <section class="panel panel--terminal">
+                    <div class="panel__head">
+                        <div>
+                            <p class="panel__kicker">Signal Feed</p>
+                            <h2>请求日志</h2>
                         </div>
                     </div>
-                </section>
-
-                <!-- 查询结果 -->
-                <section class="query-results">
-                    <div class="card card-result">
-                        <div class="card-header">
-                            <h2 class="card-title">📋 查询结果</h2>
-                        </div>
-                        <div class="card-content">
-                            <div class="result-display" id="resultDisplay">
-                                <div class="result-placeholder">
-                                    <div class="placeholder-icon">🔍</div>
-                                    <p>输入 ID 并点击查询按钮获取数据</p>
-                                </div>
-                            </div>
-                        </div>
+                    <div id="signal-feed" class="signal-feed">
+                        <p class="signal-feed__empty">页面加载后，这里会记录 API 请求结果。</p>
                     </div>
                 </section>
             </main>
-
-            <footer class="page-footer">
-                <p>&copy; 2024-2025 sr-download - 数据监控面板</p>
-            </footer>
         </div>
     </body>
 </html>

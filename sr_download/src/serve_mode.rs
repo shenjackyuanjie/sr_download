@@ -38,8 +38,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     loop {
         if stop_receiver.try_recv().is_ok() {
             event!(Level::INFO, "{}", "结束下载!".yellow());
-            // 结束 db
-            db_connect.close().await?;
+            db_connect.close().await;
             if conf.serve.enable {
                 if let Some(web_waiter) = web_waiter {
                     web_waiter.abort();
@@ -103,8 +102,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
             }
             _ = &mut stop_receiver => {
                 event!(Level::INFO, "{}", "结束下载!".yellow());
-                // 结束 db
-                db_connect.close().await?;
+                db_connect.close().await;
                 return Ok(());
             }
         }

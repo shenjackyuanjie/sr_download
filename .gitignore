@@ -1,4 +1,6 @@
 /target
+.codex-target*/
+sr_download/.codex-target*/
 config.toml
 sr_download.exe
 env

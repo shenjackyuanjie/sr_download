@@ -2,7 +2,7 @@ use reqwest::{Client, ClientBuilder};
 use std::time::Duration;
 use tracing::{Level, event};
 
-use crate::{SaveId, model::sea_orm_active_enums::SaveType};
+use crate::{SaveId, db_part::SaveType};
 
 #[derive(Debug, Clone)]
 pub struct Downloader {

@@ -8,14 +8,12 @@ pub mod config;
 pub mod db_part;
 /// 快速同步
 pub mod fast_mode;
-#[allow(unused)]
-pub mod model;
 pub mod net;
 /// 服务模式
 pub mod serve_mode;
 pub mod web_part;
 
-use migration::SaveId;
+pub use db_part::SaveId;
 pub use net::Downloader;
 
 enum RunMode {

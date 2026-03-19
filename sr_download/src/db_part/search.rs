@@ -1,33 +1,26 @@
-use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-};
+use sqlx::{PgPool, Row};
 use tracing::{Level, event};
 
-use crate::model;
-use crate::model::sea_orm_active_enums::SaveType;
-use migration::SaveId;
+use crate::db_part::SaveType;
+use crate::db_part::defines::SaveId;
 
 use super::DbData;
 
 /// 找到最大的数据的 id
-pub async fn max_id(db: &DatabaseConnection) -> SaveId {
-    // SELECT save_id from main_data ORDER BY save_id DESC LIMIT 1
-    // 我丢你老母, 有这时间写这个, 我都写完 sql 语句了
-    let data: Result<Option<i32>, DbErr> = model::main_data::Entity::find()
-        .order_by_desc(model::main_data::Column::SaveId)
-        .filter(model::main_data::Column::Len.gt(0))
-        .filter(model::main_data::Column::SaveType.ne(SaveType::None))
-        .select_only()
-        .column(model::main_data::Column::SaveId)
-        .limit(1)
-        .into_tuple()
-        .one(db)
-        .await;
+pub async fn max_id(db: &PgPool) -> SaveId {
+    let data = sqlx::query(
+        "SELECT save_id
+         FROM main_data
+         WHERE len > 0 AND save_type != $1
+         ORDER BY save_id DESC
+         LIMIT 1",
+    )
+    .bind(SaveType::None)
+    .fetch_optional(db)
+    .await;
     match data {
-        Ok(model) => match model {
-            Some(model) => model as SaveId,
-            None => 0,
-        },
+        Ok(Some(row)) => row.try_get::<i32, _>("save_id").map(|v| v as SaveId).unwrap_or(0),
+        Ok(None) => 0,
         Err(e) => {
             event!(Level::WARN, "Error when find_max_id: {:?}", e);
             0
@@ -36,15 +29,27 @@ pub async fn max_id(db: &DatabaseConnection) -> SaveId {
 }
 
 /// 找到最大的存档
-pub async fn max_save(db: &DatabaseConnection) -> Option<DbData> {
-    // SELECT * from main_data ORDER BY save_id DESC WHERE save_type = save LIMIT 1
-    let data = model::main_data::Entity::find()
-        .order_by_desc(model::main_data::Column::SaveId)
-        .filter(model::main_data::Column::SaveType.eq(SaveType::Save))
-        .one(db)
-        .await;
+pub async fn max_save(db: &PgPool) -> Option<DbData> {
+    let data = sqlx::query(
+        "SELECT save_id, save_type, blake_hash, len, short_data, xml_tested
+         FROM main_data
+         WHERE save_type = $1
+         ORDER BY save_id DESC
+         LIMIT 1",
+    )
+    .bind(SaveType::Save)
+    .fetch_optional(db)
+    .await;
     match data {
-        Ok(model) => model.map(|model| model.into()),
+        Ok(Some(row)) => Some(DbData {
+            text: row.try_get("short_data").ok()?,
+            save_id: row.try_get::<i32, _>("save_id").ok()? as SaveId,
+            save_type: row.try_get("save_type").ok()?,
+            len: row.try_get("len").ok()?,
+            blake_hash: row.try_get("blake_hash").ok()?,
+            xml_tested: row.try_get::<Option<bool>, _>("xml_tested").ok()?.unwrap_or(false),
+        }),
+        Ok(None) => None,
         Err(e) => {
             event!(Level::WARN, "Error when find_max_save: {:?}", e);
             None
@@ -53,15 +58,27 @@ pub async fn max_save(db: &DatabaseConnection) -> Option<DbData> {
 }
 
 /// 找到最大的飞船
-pub async fn max_ship(db: &DatabaseConnection) -> Option<DbData> {
-    // SELECT * from main_data ORDER BY save_id DESC WHERE save_type = ship LIMIT 1
-    let data = model::main_data::Entity::find()
-        .order_by_desc(model::main_data::Column::SaveId)
-        .filter(model::main_data::Column::SaveType.eq(SaveType::Ship))
-        .one(db)
-        .await;
+pub async fn max_ship(db: &PgPool) -> Option<DbData> {
+    let data = sqlx::query(
+        "SELECT save_id, save_type, blake_hash, len, short_data, xml_tested
+         FROM main_data
+         WHERE save_type = $1
+         ORDER BY save_id DESC
+         LIMIT 1",
+    )
+    .bind(SaveType::Ship)
+    .fetch_optional(db)
+    .await;
     match data {
-        Ok(model) => model.map(|model| model.into()),
+        Ok(Some(row)) => Some(DbData {
+            text: row.try_get("short_data").ok()?,
+            save_id: row.try_get::<i32, _>("save_id").ok()? as SaveId,
+            save_type: row.try_get("save_type").ok()?,
+            len: row.try_get("len").ok()?,
+            blake_hash: row.try_get("blake_hash").ok()?,
+            xml_tested: row.try_get::<Option<bool>, _>("xml_tested").ok()?.unwrap_or(false),
+        }),
+        Ok(None) => None,
         Err(e) => {
             event!(Level::WARN, "Error when find_max_ship: {:?}", e);
             None

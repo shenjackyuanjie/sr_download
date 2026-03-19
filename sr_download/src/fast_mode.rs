@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use migration::SaveId;
+use sqlx::PgPool;
 
 use colored::Colorize;
 use futures::future::select_all;
@@ -8,10 +8,10 @@ use tokio::sync::oneshot::Receiver;
 use tracing::{Level, event};
 
 use crate::db_part::{CoverStrategy, SaveType};
-use crate::{Downloader, config, db_part};
+use crate::{Downloader, SaveId, config, db_part};
 
 async fn big_worker(
-    db: sea_orm::DatabaseConnection,
+    db: PgPool,
     client: Downloader,
     work_range: Range<SaveId>,
 ) {
@@ -87,8 +87,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 
     if stop_receiver.try_recv().is_ok() {
         event!(Level::INFO, "{}", "Stop download".red());
-        // 结束 db
-        db_connect.close().await?;
+        db_connect.close().await;
         return Ok(());
     }
 
@@ -100,8 +99,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     for _ in 0..works.len() {
         if stop_receiver.try_recv().is_ok() {
             event!(Level::INFO, "{}", "Stop download".red());
-            // 结束 db
-            db_connect.close().await?;
+            db_connect.close().await;
             return Ok(());
         }
         let client = Downloader::new(Some(conf.net_timeout()));
@@ -117,8 +115,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     while current_id < end_id || !works.is_empty() {
         if stop_receiver.try_recv().is_ok() {
             event!(Level::INFO, "{}", "Stop download".red());
-            // 结束 db
-            db_connect.close().await?;
+            db_connect.close().await;
             return Ok(());
         }
         while current_id < end_id && works.len() < max_works {

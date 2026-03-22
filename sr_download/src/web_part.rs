@@ -52,9 +52,11 @@ pub async fn web_main() -> anyhow::Result<()> {
 
     let listener = tokio::net::TcpListener::bind(conf.serve.host_with_port.clone()).await?;
     let db = db_part::connect_server(conf).await?;
-    let _cache =
-        cache::WebCache::new(&db, Duration::from_micros(conf.serve.refresh_interval as u64))
-            .await;
+    let _cache = cache::WebCache::new(
+        &db,
+        Duration::from_micros(conf.serve.refresh_interval as u64),
+    )
+    .await;
     let app = Router::new()
         .route("/last/data", get(get_last_data).post(get_last_data))
         .route("/last/save", get(get_last_save).post(get_last_save))

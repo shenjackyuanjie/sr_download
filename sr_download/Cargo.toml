@@ -13,12 +13,12 @@ reqwest = { version = "0.12", features = [
     "charset",
 ], default-features = false }
 
-colored = "3"
+colored = "3.1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3.18", features = ["local-time"] }
+tracing-subscriber = { version = "0.3", features = ["local-time"] }
 
 futures = "0.3"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.50", features = ["full"] }
 anyhow = { version = "1.0", features = ["backtrace"] }
 
 axum = "0.8"
@@ -31,8 +31,8 @@ sqlx = { version = "0.8", features = [
 
 serde = { version = "1.0", features = ["serde_derive"] }
 toml = "0.9"
-blake3 = "1.6"
-quick-xml = { version = "0.38" }
+blake3 = "1.8"
+quick-xml = { version = "0.38", features = ["serialize"] }
 chrono = "0.4"
-humantime = "2.2"
-clap = { version = "4", features = ["derive"] }
+humantime = "2.3"
+clap = { version = "4.5", features = ["derive"] }

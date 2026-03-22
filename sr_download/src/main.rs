@@ -1,20 +1,9 @@
-use std::{path::PathBuf, sync::OnceLock, time::SystemTime};
+use std::{path::PathBuf, time::SystemTime};
 
 use clap::{ArgGroup, Parser};
 use colored::Colorize;
+use sr_download::{START_TIME, config, fast_mode, serve_mode};
 use tracing::{Level, event};
-
-pub mod config;
-pub mod db_part;
-/// 快速同步
-pub mod fast_mode;
-pub mod net;
-/// 服务模式
-pub mod serve_mode;
-pub mod web_part;
-
-pub use db_part::SaveId;
-pub use net::Downloader;
 
 enum RunMode {
     /// 服务模式
@@ -22,9 +11,6 @@ enum RunMode {
     /// 快速模式
     Fast,
 }
-/// 开始时间
-pub static START_TIME: OnceLock<SystemTime> = OnceLock::new();
-
 #[derive(Parser, Debug)]
 #[command(
     name = "srdownload",

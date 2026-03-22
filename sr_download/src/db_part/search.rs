@@ -19,7 +19,10 @@ pub async fn max_id(db: &PgPool) -> SaveId {
     .fetch_optional(db)
     .await;
     match data {
-        Ok(Some(row)) => row.try_get::<i32, _>("save_id").map(|v| v as SaveId).unwrap_or(0),
+        Ok(Some(row)) => row
+            .try_get::<i32, _>("save_id")
+            .map(|v| v as SaveId)
+            .unwrap_or(0),
         Ok(None) => 0,
         Err(e) => {
             event!(Level::WARN, "Error when find_max_id: {:?}", e);
@@ -47,7 +50,10 @@ pub async fn max_save(db: &PgPool) -> Option<DbData> {
             save_type: row.try_get("save_type").ok()?,
             len: row.try_get("len").ok()?,
             blake_hash: row.try_get("blake_hash").ok()?,
-            xml_tested: row.try_get::<Option<bool>, _>("xml_tested").ok()?.unwrap_or(false),
+            xml_tested: row
+                .try_get::<Option<bool>, _>("xml_tested")
+                .ok()?
+                .unwrap_or(false),
         }),
         Ok(None) => None,
         Err(e) => {
@@ -76,7 +82,10 @@ pub async fn max_ship(db: &PgPool) -> Option<DbData> {
             save_type: row.try_get("save_type").ok()?,
             len: row.try_get("len").ok()?,
             blake_hash: row.try_get("blake_hash").ok()?,
-            xml_tested: row.try_get::<Option<bool>, _>("xml_tested").ok()?.unwrap_or(false),
+            xml_tested: row
+                .try_get::<Option<bool>, _>("xml_tested")
+                .ok()?
+                .unwrap_or(false),
         }),
         Ok(None) => None,
         Err(e) => {

@@ -142,17 +142,15 @@ impl DbData {
         utils::verify_xml(self.text.as_ref().unwrap()).is_ok()
     }
 
+    pub fn verify_ship(&self) -> utils::ShipVerifyState {
+        let Some(text) = self.text.as_ref() else {
+            return utils::ShipVerifyState::NotShip;
+        };
+        utils::verify_ship(text)
+    }
+
     pub fn xml_status(&self) -> String {
-        if self.xml_tested {
-            return "ok".to_string();
-        }
-        if self.text.is_none() {
-            return "no data".to_string();
-        }
-        if let Err(e) = utils::verify_xml(self.text.as_ref().unwrap()) {
-            return format!("error: {e}");
-        }
-        "ok".to_string()
+        self.verify_ship().to_string()
     }
 
     /// 直接从 full_data 里选即可

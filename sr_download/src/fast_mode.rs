@@ -10,11 +10,7 @@ use tracing::{Level, event};
 use crate::db_part::{CoverStrategy, SaveType};
 use crate::{Downloader, SaveId, config, db_part};
 
-async fn big_worker(
-    db: PgPool,
-    client: Downloader,
-    work_range: Range<SaveId>,
-) {
+async fn big_worker(db: PgPool, client: Downloader, work_range: Range<SaveId>) {
     for work_id in work_range {
         let exist_len = db_part::check_data_len(&db, work_id).await;
         if let Some(len) = exist_len

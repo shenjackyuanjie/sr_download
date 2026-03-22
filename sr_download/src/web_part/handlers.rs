@@ -10,16 +10,16 @@ use sqlx::PgPool;
 
 use crate::{
     Downloader, SaveId,
-    db_part::{
-        self, DbData, SaveType,
-        utils::FromDb,
-    },
+    db_part::{self, DbData, SaveType, utils::FromDb},
 };
 
 use super::{
-    INFO_PAGE, RESYNC_TOKEN, api_request_counter_pp, web_request_counter_pp,
-    models::{DashboardOverview, LastData, LastSave, LastShip, RawData, RecordDetail, ServiceStatus},
+    INFO_PAGE, RESYNC_TOKEN, api_request_counter_pp,
+    models::{
+        DashboardOverview, LastData, LastSave, LastShip, RawData, RecordDetail, ServiceStatus,
+    },
     response::WebResponse,
+    web_request_counter_pp,
 };
 
 pub static RESYNC_DOWNLOADER: LazyLock<Downloader> =

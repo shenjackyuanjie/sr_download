@@ -19,7 +19,10 @@ pub mod pre_local {
             event!(Level::DEBUG, "sea_orm 表不存在, 不需要迁移");
             return;
         }
-        event!(Level::DEBUG, "当前仅保留 seaql_migrations 兼容检测, 不再执行 SeaORM 迁移");
+        event!(
+            Level::DEBUG,
+            "当前仅保留 seaql_migrations 兼容检测, 不再执行 SeaORM 迁移"
+        );
     }
 }
 

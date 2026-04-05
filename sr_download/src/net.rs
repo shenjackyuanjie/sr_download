@@ -2,6 +2,7 @@ use reqwest::{Client, ClientBuilder};
 use std::time::Duration;
 use tracing::{Level, event};
 
+use crate::xml_part::{XmlResult, model::SaveDocument, model::ShipDocument, model::XmlDocument};
 use crate::{SaveId, db_part::SaveType};
 
 #[derive(Debug, Clone)]
@@ -75,6 +76,30 @@ impl DownloadFile {
     }
     pub fn info(&self) -> String {
         format!("{}: {} bytes", self.type_name(), self.len(),)
+    }
+
+    pub fn parse_xml(&self) -> XmlResult<XmlDocument> {
+        crate::xml_part::parse::parse_any_xml(self.ref_data())
+    }
+
+    pub fn parse_ship_xml(&self) -> XmlResult<ShipDocument> {
+        match self.parse_xml()? {
+            XmlDocument::Ship(doc) => Ok(doc),
+            XmlDocument::Save(_) => Err(crate::xml_part::XmlError::UnexpectedDocumentType {
+                expected: "Ship",
+                found: "Save",
+            }),
+        }
+    }
+
+    pub fn parse_save_xml(&self) -> XmlResult<SaveDocument> {
+        match self.parse_xml()? {
+            XmlDocument::Save(doc) => Ok(doc),
+            XmlDocument::Ship(_) => Err(crate::xml_part::XmlError::UnexpectedDocumentType {
+                expected: "Save",
+                found: "Ship",
+            }),
+        }
     }
 }
 

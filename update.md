@@ -1,5 +1,18 @@
 # v1.0
 
+## 1.3.0
+
+补上了一套完整的 XML 解析模块, 现在 `Ship` 和 `Save` 都可以解析成结构化 Rust 数据, 也支持再写回 XML
+
+新的 `xml_part` 模块把 raw/model/parse/write/error 分开了
+`Save` 里的 `ShipNode -> Ship` 也抽到了共享的船体结构上, 后面继续做分析和校验会顺手很多
+
+同时给 `DbData` 和下载结果补上了直接解析 XML 的入口
+后面不需要再到处手写 `quick_xml` 的临时解析逻辑了
+
+顺手升级了一批依赖版本, 包括 `reqwest 0.13`、`quick-xml 0.39`、`tokio 1.51`、`clap 4.6` 和 `toml 1.1.2`
+调整了对应的配置和兼容代码, 现在编译和 XML round-trip 测试都已经重新跑通
+
 ## 1.2.11
 
 重新整理了 dashboard 的页面样式

@@ -2,7 +2,7 @@ use colored::Colorize;
 use quick_xml::{Reader, de::from_str, events::Event, name::QName};
 use serde::Deserialize;
 use sqlx::{
-    Executor, PgPool, Row,
+    PgPool, Row,
     postgres::{PgPoolOptions, PgRow},
 };
 use std::collections::HashSet;
@@ -30,13 +30,17 @@ pub async fn connect(conf: &ConfigFile) -> anyhow::Result<PgPool> {
         .after_connect(move |conn, _meta| {
             let sql = after_connect_sql.clone();
             Box::pin(async move {
-                conn.execute(sql.as_str()).await?;
+                sqlx::raw_sql(sqlx::AssertSqlSafe(sql))
+                    .execute(conn)
+                    .await?;
                 Ok(())
             })
         })
         .connect(&conf.db.url)
         .await?;
-    db.execute(search_path_sql.as_str()).await?;
+    sqlx::raw_sql(sqlx::AssertSqlSafe(search_path_sql))
+        .execute(&db)
+        .await?;
     sqlx::query("SELECT 1").execute(&db).await?;
     event!(Level::INFO, "{}", "已经连接数据库".blue());
     Ok(db)
@@ -54,13 +58,17 @@ pub async fn connect_server(conf: &ConfigFile) -> anyhow::Result<PgPool> {
         .after_connect(move |conn, _meta| {
             let sql = after_connect_sql.clone();
             Box::pin(async move {
-                conn.execute(sql.as_str()).await?;
+                sqlx::raw_sql(sqlx::AssertSqlSafe(sql))
+                    .execute(conn)
+                    .await?;
                 Ok(())
             })
         })
         .connect(&conf.db.url)
         .await?;
-    db.execute(search_path_sql.as_str()).await?;
+    sqlx::raw_sql(sqlx::AssertSqlSafe(search_path_sql))
+        .execute(&db)
+        .await?;
     sqlx::query("SELECT 1").execute(&db).await?;
     event!(Level::INFO, "{}", "服务器已经连接数据库".blue());
     Ok(db)
@@ -82,7 +90,7 @@ pub async fn update_xml_tested(db: &PgPool) -> Option<()> {
     event!(Level::INFO, "正在检查 {} 条数据的xml状态", count);
     let sql = format!("SELECT {}()", db_names::UPDATE_XML_TESTED);
     event!(Level::INFO, "正在更新数据库内所有 xml_tested = null 的数据");
-    let _ = db.execute(sql.as_str()).await;
+    let _ = sqlx::raw_sql(sqlx::AssertSqlSafe(sql)).execute(db).await;
     event!(Level::INFO, "已经更新数据库内所有 xml_tested = null 的数据");
     Some(())
 }
@@ -94,7 +102,10 @@ pub async fn check_null_data(db: &PgPool) -> Option<()> {
         "SELECT count(1) from {} where data is NULL",
         db_names::FULL_DATA_TABLE
     );
-    let data: PgRow = sqlx::query(&sql).fetch_one(db).await.ok()?;
+    let data: PgRow = sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_one(db)
+        .await
+        .ok()?;
     let count: i64 = data.try_get("count").ok()?;
     if count == 0 {
         event!(Level::INFO, "数据库内数据都是完整的, 放心");
@@ -109,7 +120,10 @@ pub async fn check_null_data(db: &PgPool) -> Option<()> {
         "SELECT save_id from {} where data is NULL",
         db_names::FULL_DATA_TABLE
     );
-    let quert_results = sqlx::query(&sql).fetch_all(db).await.ok()?;
+    let quert_results = sqlx::query(sqlx::AssertSqlSafe(sql))
+        .fetch_all(db)
+        .await
+        .ok()?;
     let downloader = crate::Downloader::new(None);
     for result in quert_results {
         let id: db_names::DbSaveId = result.try_get("save_id").ok()?;

@@ -7,7 +7,7 @@ default-run = "sr_download"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 # rustls 大法好!(默认使用 rustls, 用于 musl 环境)
-reqwest = { version = "0.13", features = [
+reqwest = { version = "0.13.4", features = [
     "rustls",
     "http2",
     "charset",
@@ -21,8 +21,8 @@ futures = "0.3.33"
 tokio = { version = "1.53.1", features = ["full"] }
 anyhow = { version = "1.0.104", features = ["backtrace"] }
 
-axum = "0.8"
-sqlx = { version = "0.8", features = [
+axum = "0.8.9"
+sqlx = { version = "0.8.6", features = [
     "runtime-tokio-rustls",
     "postgres",
     "macros",
@@ -32,7 +32,7 @@ sqlx = { version = "0.8", features = [
 serde = { version = "1.0.229", features = ["serde_derive"] }
 toml = "1.1.4"
 blake3 = "1.8.6"
-quick-xml = { version = "0.39", features = ["serialize"] }
+quick-xml = { version = "0.39.4", features = ["serialize"] }
 chrono = "0.4.45"
 humantime = "2.4.0"
 clap = { version = "4.6.6", features = ["derive"] }

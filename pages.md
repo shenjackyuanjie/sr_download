@@ -124,6 +124,23 @@ enable = true
 }
 ```
 
+### GET /api/records/:id/analysis
+获取已通过后端 XML 和飞船结构校验的飞船工程分析。
+
+只有 save_type=ship、xml_tested=true 且 xml_status=verified ship 的记录可用。
+非合格记录返回 422，不存在的记录返回 404。
+
+返回数据包括：
+
+- 飞船状态、部件数量、激活/爆炸/未知部件统计
+- 基于 PartList.xml 的部件清单与质量估算
+- 当前燃料、燃料容量、引擎/RCS/太阳能板统计
+- Pod 级序和触发部件
+- 普通连接、Dock 连接、断开组和布局包围盒
+
+质量字段同时提供目录单位 catalog_units 和兼容旧分析脚本的 scaled_units，
+后者使用 scale=500。
+
 ### GET `/resync`
 触发数据重新同步操作
 

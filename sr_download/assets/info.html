@@ -133,6 +133,56 @@
                                     <button class="text-button" id="copy-record-hash" type="button">复制</button></dd>
                             </div>
                         </dl>
+                        <section class="ship-analysis" id="ship-analysis" aria-labelledby="ship-analysis-heading" hidden>
+                            <header class="ship-analysis__header">
+                                <div>
+                                    <p class="eyebrow">Verified ship</p>
+                                    <h3 id="ship-analysis-heading">飞船工程分析</h3>
+                                    <p>基于后端校验通过的 Ship XML 和 PartList 部件目录计算。</p>
+                                </div>
+                                <span class="status-badge" data-state="ok">后端分析</span>
+                            </header>
+                            <div class="notice notice--error ship-analysis__error" id="ship-analysis-error" role="alert" hidden></div>
+                            <div class="analysis-metrics" id="ship-analysis-metrics" aria-label="飞船工程指标"></div>
+                            <div class="analysis-grid">
+                                <section class="analysis-card analysis-card--wide" aria-labelledby="inventory-heading">
+                                    <div class="analysis-card__heading">
+                                        <h4 id="inventory-heading">部件清单</h4>
+                                        <span>按 PartType 聚合</span>
+                                    </div>
+                                    <div class="table-wrap">
+                                        <table class="analysis-table">
+                                            <thead><tr>
+                                                <th>部件</th><th>类别</th><th>数量</th><th>目录质量</th>
+                                                <th>燃料</th><th>动力</th>
+                                            </tr></thead>
+                                            <tbody id="ship-inventory"></tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                                <section class="analysis-card" aria-labelledby="fuel-heading">
+                                    <div class="analysis-card__heading">
+                                        <h4 id="fuel-heading">燃料与推进</h4>
+                                        <span id="ship-propulsion-summary">—</span>
+                                    </div>
+                                    <div class="analysis-list" id="ship-fuel"></div>
+                                </section>
+                                <section class="analysis-card" aria-labelledby="staging-heading">
+                                    <div class="analysis-card__heading">
+                                        <h4 id="staging-heading">级序</h4>
+                                        <span id="ship-staging-summary">—</span>
+                                    </div>
+                                    <div class="analysis-list" id="ship-staging"></div>
+                                </section>
+                                <section class="analysis-card" aria-labelledby="structure-heading">
+                                    <div class="analysis-card__heading">
+                                        <h4 id="structure-heading">结构与布局</h4>
+                                        <span id="ship-geometry-summary">—</span>
+                                    </div>
+                                    <div class="analysis-list" id="ship-structure"></div>
+                                </section>
+                            </div>
+                        </section>
                         <section class="raw-viewer" aria-labelledby="raw-heading">
                             <div class="raw-viewer__header">
                                 <div>
@@ -148,6 +198,7 @@
                                     <button class="button button--quiet" id="copy-record-raw" type="button">复制原文</button>
                                 </div>
                             </div>
+                            <div class="xml-highlight-view" id="xml-highlight-view" hidden></div>
                             <pre id="record-raw-view" tabindex="0"><code id="record-raw">—</code></pre>
                         </section>
                     </article>

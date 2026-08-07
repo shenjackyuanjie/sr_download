@@ -19,6 +19,7 @@ use super::{
         DashboardOverview, LastData, LastSave, LastShip, RawData, RecordDetail, ServiceStatus,
     },
     response::WebResponse,
+    ship_analysis::{ShipAnalysis, analyze_ship},
     web_request_counter_pp,
 };
 
@@ -113,6 +114,43 @@ pub async fn api_record_detail(
                 xml_status: data.xml_status(),
                 raw_data: data.text,
             })),
+            None => Json(WebResponse::new_missing("data not found")),
+        },
+        Err(e) => Json(WebResponse::new_error(
+            StatusCode::BAD_REQUEST,
+            format!("id parse error: {e:?}"),
+        )),
+    }
+}
+
+pub async fn api_record_analysis(
+    State(db): State<PgPool>,
+    Path(raw_id): Path<String>,
+) -> Json<WebResponse<ShipAnalysis>> {
+    api_request_counter_pp();
+    match raw_id.parse::<SaveId>() {
+        Ok(id) => match DbData::from_db(id, &db).await {
+            Some(data) => {
+                if data.save_type != SaveType::Ship
+                    || !data.xml_tested
+                    || !matches!(
+                        data.verify_ship(),
+                        db_part::utils::ShipVerifyState::VerifiedShip
+                    )
+                {
+                    return Json(WebResponse::new_error(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        "record is not a verified ship",
+                    ));
+                }
+                match data.parse_ship_xml() {
+                    Ok(document) => Json(WebResponse::new_normal(analyze_ship(&document))),
+                    Err(error) => Json(WebResponse::new_error(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("failed to analyze ship xml: {error}"),
+                    )),
+                }
+            }
             None => Json(WebResponse::new_missing("data not found")),
         },
         Err(e) => Json(WebResponse::new_error(

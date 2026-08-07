@@ -3,6 +3,7 @@
 const API = Object.freeze({
     overview: '/api/overview',
     record: (id) => '/api/records/' + id,
+    analysis: (id) => '/api/records/' + id + '/analysis',
     raw: (id) => '/api/records/' + id + '/raw',
 });
 
@@ -38,6 +39,14 @@ class DashboardApp {
             queryPlaceholder: document.getElementById('query-placeholder'),
             recordDetail: document.getElementById('record-detail'),
             rawView: document.getElementById('record-raw-view'),
+            xmlHighlightView: document.getElementById('xml-highlight-view'),
+            shipAnalysis: document.getElementById('ship-analysis'),
+            shipAnalysisError: document.getElementById('ship-analysis-error'),
+            shipAnalysisMetrics: document.getElementById('ship-analysis-metrics'),
+            shipInventory: document.getElementById('ship-inventory'),
+            shipFuel: document.getElementById('ship-fuel'),
+            shipStaging: document.getElementById('ship-staging'),
+            shipStructure: document.getElementById('ship-structure'),
             formatToggle: document.getElementById('toggle-xml-format'),
             wrapToggle: document.getElementById('toggle-xml-wrap'),
             toast: document.getElementById('toast'),
@@ -331,10 +340,24 @@ class DashboardApp {
                 }
             }
 
+            let shipAnalysis = null;
+            let shipAnalysisError = '';
+            if (isVerifiedShip(detail.info, detail.xml_status)) {
+                try {
+                    const analysisPayload = await this.fetchPayload(API.analysis(id), controller.signal);
+                    shipAnalysis = analysisPayload.data || null;
+                } catch (error) {
+                    if (error.name === 'AbortError') throw error;
+                    shipAnalysisError = error.message || '后端分析接口暂时不可用';
+                }
+            }
+
             this.currentRecord = {
                 info: detail.info,
                 xml_status: detail.xml_status,
                 raw_data: rawData,
+                ship_analysis: shipAnalysis,
+                ship_analysis_error: shipAnalysisError,
             };
             this.renderRecord(this.currentRecord);
         } catch (error) {
@@ -375,6 +398,7 @@ class DashboardApp {
         document.getElementById('copy-record-raw').disabled = !hasRaw;
         this.elements.formatToggle.disabled = !this.xmlAnalysis.valid;
         this.elements.wrapToggle.disabled = !hasRaw;
+        this.renderShipAnalysis(record);
         this.renderRawView();
         this.elements.queryPlaceholder.hidden = true;
         this.elements.recordDetail.hidden = false;
@@ -390,15 +414,121 @@ class DashboardApp {
                 ? this.xmlAnalysis.formatted
                 : this.currentRecord.raw_data;
 
-        setText('record-raw', content);
+        const useInspector = formatted && isVerifiedShip(
+            this.currentRecord?.info,
+            this.currentRecord?.xml_status,
+        );
+        if (useInspector) {
+            this.elements.xmlHighlightView.innerHTML = renderXmlInspector(this.xmlAnalysis.formatted);
+            this.elements.xmlHighlightView.hidden = false;
+            this.elements.rawView.hidden = true;
+        } else {
+            setText('record-raw', content);
+            this.elements.xmlHighlightView.hidden = true;
+            this.elements.rawView.hidden = false;
+        }
         setText('raw-view-mode', formatted
-            ? '格式化视图 · ' + formatNumber(this.xmlAnalysis.lines) + ' 行'
+            ? (useInspector ? '高亮视图 · ' : '格式化视图 · ') + formatNumber(this.xmlAnalysis.lines) + ' 行'
             : '原始视图');
         this.elements.formatToggle.textContent = formatted ? '查看原文' : '格式化显示';
         this.elements.formatToggle.setAttribute('aria-pressed', String(formatted));
         this.elements.wrapToggle.textContent = this.rawWrap ? '关闭换行' : '自动换行';
         this.elements.wrapToggle.setAttribute('aria-pressed', String(this.rawWrap));
         this.elements.rawView.classList.toggle('is-wrapped', this.rawWrap);
+        this.elements.xmlHighlightView.classList.toggle('is-wrapped', this.rawWrap);
+    }
+
+    renderShipAnalysis(record) {
+        const eligible = isVerifiedShip(record.info, record.xml_status);
+        const analysis = record.ship_analysis;
+        this.elements.shipAnalysis.hidden = !eligible;
+        this.elements.shipAnalysisError.hidden = !record.ship_analysis_error;
+        this.elements.shipAnalysisError.textContent = record.ship_analysis_error || '';
+        if (!eligible || !analysis) {
+            this.elements.shipAnalysisMetrics.innerHTML = '';
+            this.elements.shipInventory.innerHTML = '';
+            this.elements.shipFuel.innerHTML = '';
+            this.elements.shipStaging.innerHTML = '';
+            this.elements.shipStructure.innerHTML = '';
+            return;
+        }
+
+        const totals = analysis.totals || {};
+        const mass = analysis.mass || {};
+        const fuel = analysis.fuel || {};
+        const propulsion = analysis.propulsion || {};
+        const metrics = [
+            ['部件', formatNumber(totals.parts)],
+            ['估算质量', formatScaledNumber(mass.scaled_units)],
+            ['当前燃料', formatScaledNumber(fuel.current)],
+            ['引擎推力', formatScaledNumber(propulsion.engines?.power)],
+            ['连接', formatNumber(analysis.connections?.total)],
+            ['级序', formatNumber(analysis.staging?.length)],
+        ];
+        this.elements.shipAnalysisMetrics.innerHTML = metrics.map(([label, value]) =>
+            '<div class="analysis-metric"><span class="analysis-metric__label">' +
+            escapeHtml(label) + '</span><strong class="analysis-metric__value">' +
+            escapeHtml(value) + '</strong></div>'
+        ).join('');
+
+        this.elements.shipInventory.innerHTML = (analysis.inventory || []).length
+            ? analysis.inventory.map(renderInventoryRow).join('')
+            : '<tr><td colspan="6" class="table-empty">没有部件记录</td></tr>';
+
+        const fuelBuckets = fuel.by_type || [];
+        this.elements.shipFuel.innerHTML = [
+            '<div class="analysis-list__item"><div class="analysis-list__title"><span>总燃料</span><code>' +
+                escapeHtml(formatScaledNumber(fuel.current)) + ' / ' + escapeHtml(formatScaledNumber(fuel.capacity)) +
+                '</code></div><div class="analysis-list__meta">容量使用率 ' +
+                escapeHtml(formatPercent(fuel.current, fuel.capacity)) + '</div></div>',
+            ...fuelBuckets.map((bucket) =>
+                '<div class="analysis-list__item"><div class="analysis-list__title"><span>' +
+                escapeHtml(bucket.fuel_type || '未知燃料') + '</span><code>' +
+                escapeHtml(formatScaledNumber(bucket.current)) + ' / ' +
+                escapeHtml(formatScaledNumber(bucket.capacity)) +
+                '</code></div></div>'
+            ),
+            '<div class="analysis-list__item"><div class="analysis-list__title"><span>引擎</span><code>' +
+                escapeHtml(formatNumber(propulsion.engines?.count)) + ' 个 · ' +
+                escapeHtml(formatScaledNumber(propulsion.engines?.consumption)) + ' /s</code></div>' +
+                '<div class="analysis-list__meta">RCS ' +
+                escapeHtml(formatNumber(propulsion.rcs?.count)) + ' 个 · 太阳能板 ' +
+                escapeHtml(formatNumber(propulsion.solar_count)) + ' 个</div></div>',
+        ].join('');
+        setText('ship-propulsion-summary',
+            formatScaledNumber(propulsion.engines?.power) + ' 推力');
+
+        this.elements.shipStaging.innerHTML = (analysis.staging || []).length
+            ? analysis.staging.map(renderPodAnalysis).join('')
+            : '<div class="analysis-list__empty">没有 Pod 级序信息</div>';
+        setText('ship-staging-summary', formatNumber(analysis.staging?.length) + ' 个 Pod');
+
+        const geometry = analysis.geometry;
+        const connection = analysis.connections || {};
+        const structureItems = [
+            '<div class="analysis-list__item"><div class="analysis-list__title"><span>飞船状态</span><code>' +
+                escapeHtml(analysis.state?.lifted_off ? '已起飞' : '未起飞') + ' · ' +
+                escapeHtml(analysis.state?.touching_ground ? '接地' : '空中') +
+                '</code></div><div class="analysis-list__meta">版本 ' +
+                escapeHtml(String(analysis.state?.version ?? '—')) + '</div></div>',
+            '<div class="analysis-list__item"><div class="analysis-list__title"><span>连接</span><code>' +
+                escapeHtml(formatNumber(connection.total)) + ' 条</code></div><div class="analysis-list__meta">普通 ' +
+                escapeHtml(formatNumber(connection.normal)) + ' · Dock ' +
+                escapeHtml(formatNumber(connection.dock)) + ' · 断开组 ' +
+                escapeHtml(formatNumber(analysis.totals?.disconnected_groups)) + '</div></div>',
+            '<div class="analysis-list__item"><div class="analysis-list__title"><span>布局包围盒</span><code>' +
+                escapeHtml(geometry ? formatScaledNumber(geometry.width) + ' × ' + formatScaledNumber(geometry.height) : '不可估算') +
+                '</code></div><div class="analysis-list__meta">' +
+                escapeHtml(geometry ? '已解析 ' + formatNumber(geometry.known_parts) + ' 个部件' : '部件目录缺少尺寸') +
+                '</div></div>',
+            '<div class="analysis-list__item"><div class="analysis-list__title"><span>活动部件</span><code>' +
+                escapeHtml(formatNumber(analysis.totals?.active_parts)) + ' / ' +
+                escapeHtml(formatNumber(analysis.totals?.parts)) + '</code></div><div class="analysis-list__meta">爆炸 ' +
+                escapeHtml(formatNumber(analysis.totals?.exploded_parts)) + ' · 未知类型 ' +
+                escapeHtml(formatNumber(analysis.totals?.unknown_part_types)) + '</div></div>',
+        ];
+        this.elements.shipStructure.innerHTML = structureItems.join('');
+        setText('ship-geometry-summary', geometry ? '目录尺寸估算' : '无目录尺寸');
     }
 
     resetQuery() {
@@ -407,6 +537,9 @@ class DashboardApp {
         this.xmlAnalysis = null;
         this.elements.lookupInput.value = '';
         this.elements.lookupFeedback.textContent = '';
+        this.elements.shipAnalysis.hidden = true;
+        this.elements.xmlHighlightView.hidden = true;
+        this.elements.rawView.hidden = false;
         this.showQueryPlaceholder('等待查询', '输入一个记录 ID，即可读取归档详情。', 'idle');
     }
 
@@ -514,6 +647,180 @@ function renderRecordRow(item) {
             escapeHtml(hash) + '" title="复制完整哈希"><code>' + escapeHtml(truncateHash(hash)) + '</code></button></td>' +
         '<td><button class="button button--secondary row-action" type="button" data-record-id="' + id +
             '">查看详情</button></td></tr>';
+}
+
+function isVerifiedShip(info, xmlStatus) {
+    return String(info?.save_type || '').toLowerCase() === 'ship' &&
+        Boolean(info?.xml_tested) &&
+        String(xmlStatus || '').toLowerCase() === 'verified ship';
+}
+
+function formatScaledNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number)
+        ? number.toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+        : '—';
+}
+
+function formatPercent(value, total) {
+    const current = Number(value);
+    const capacity = Number(total);
+    if (!Number.isFinite(current) || !Number.isFinite(capacity) || capacity <= 0) return '—';
+    return (current * 100 / capacity).toLocaleString('zh-CN', { maximumFractionDigits: 1 }) + '%';
+}
+
+function formatPartCategory(value) {
+    const labels = {
+        pod: '控制舱',
+        tank: '燃料箱',
+        engine: '引擎',
+        rcs: 'RCS',
+        detacher: '分离器',
+        parachute: '降落伞',
+        solar: '太阳能板',
+        wheel: '轮组',
+        fuselage: '机身',
+        strut: '支架',
+        nosecone: '整流罩',
+        dockconnector: '对接插头',
+        dockport: '对接口',
+        lander: '着陆腿',
+        Satellite: '卫星部件',
+        unknown: '未知',
+    };
+    return labels[value] || value || '未知';
+}
+
+function renderInventoryRow(item) {
+    const totalMass = Number(item.catalog_mass) * Number(item.count);
+    const mass = Number.isFinite(totalMass) ? formatScaledNumber(totalMass) : '未知';
+    const fuel = Number(item.fuel_capacity) > 0
+        ? formatScaledNumber(item.current_fuel) + ' / ' + formatScaledNumber(item.fuel_capacity)
+        : '—';
+    const power = Number(item.engine_power) > 0
+        ? formatScaledNumber(item.engine_power) + ' 推力'
+        : Number(item.rcs_power) > 0
+            ? formatScaledNumber(item.rcs_power) + ' RCS'
+            : '—';
+    return '<tr><td><strong>' + escapeHtml(item.name || '未知部件') + '</strong><br><code>' +
+        escapeHtml(item.part_type_id || '—') + '</code></td><td>' +
+        escapeHtml(formatPartCategory(item.category)) + '</td><td>' +
+        escapeHtml(formatNumber(item.count)) + '</td><td><code>' + escapeHtml(mass) +
+        '</code></td><td><code>' + escapeHtml(fuel) + '</code></td><td><code>' +
+        escapeHtml(power) + '</code></td></tr>';
+}
+
+function renderPodAnalysis(pod) {
+    const steps = (pod.steps || []).map((step) => {
+        const activations = (step.activations || []).map((activation) => {
+            const label = activation.part_name
+                ? activation.part_name + ' #' + activation.part_id
+                : '#' + activation.part_id;
+            return '<span class="status-badge" data-state="' + (activation.moved ? 'ok' : 'neutral') +
+                '">' + escapeHtml(label) + '</span>';
+        }).join(' ');
+        return '<div class="analysis-list__meta">阶段 ' + escapeHtml(String(step.index)) +
+            '：' + (activations || '无触发部件') + '</div>';
+    }).join('');
+    return '<div class="analysis-list__item"><div class="analysis-list__title"><span>' +
+        escapeHtml(pod.name || '未命名 Pod') + ' #' + escapeHtml(String(pod.part_id)) +
+        '</span><code>阶段 ' + escapeHtml(String(pod.current_stage ?? '—')) +
+        ' · 油门 ' + escapeHtml(formatPercent(pod.throttle, 1)) +
+        '</code></div>' + (steps || '<div class="analysis-list__meta">没有级序步骤</div>') + '</div>';
+}
+
+function renderXmlInspector(formatted) {
+    const lines = String(formatted || '').split('\n');
+    const blocks = [];
+    let rootLines = [];
+    let active = null;
+    let activeDepth = 0;
+    const sectionNames = {
+        Parts: '部件 Parts',
+        Connections: '连接 Connections',
+        DisconnectedParts: '断开部件 DisconnectedParts',
+    };
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        const depth = Math.max(0, Math.floor((line.length - line.trimStart().length) / 2));
+        const opening = trimmed.match(/^<(Parts|Connections|DisconnectedParts)(?:\s|>)/);
+        if (!active && depth === 1 && opening) {
+            if (rootLines.length) {
+                blocks.push({ type: 'root', lines: rootLines });
+                rootLines = [];
+            }
+            active = { name: opening[1], lines: [line] };
+            activeDepth = depth;
+            continue;
+        }
+        if (active) {
+            active.lines.push(line);
+            if (depth === activeDepth && new RegExp('^</' + active.name + '>').test(trimmed)) {
+                blocks.push({ type: 'section', ...active });
+                active = null;
+            }
+            continue;
+        }
+        rootLines.push(line);
+    }
+    if (active) blocks.push({ type: 'section', ...active });
+    if (rootLines.length) blocks.push({ type: 'root', lines: rootLines });
+
+    return blocks.map((block) => block.type === 'root'
+        ? '<pre class="xml-highlight-view__root">' + highlightXml(block.lines.join('\n')) + '</pre>'
+        : '<details open><summary>' + escapeHtml(sectionNames[block.name] || block.name) +
+        '</summary><pre class="xml-highlight-view__code">' +
+        highlightXml(block.lines.join('\n')) + '</pre></details>'
+    ).join('');
+}
+
+function highlightXml(xml) {
+    return String(xml || '').split('\n').map((line) =>
+        '<span class="xml-line">' + highlightXmlLine(line) + '</span>'
+    ).join('');
+}
+
+function highlightXmlLine(line) {
+    const tagPattern = /<[^>]*>/g;
+    let output = '';
+    let cursor = 0;
+    let match;
+    while ((match = tagPattern.exec(line)) !== null) {
+        output += highlightXmlText(line.slice(cursor, match.index));
+        output += highlightXmlTag(match[0]);
+        cursor = match.index + match[0].length;
+    }
+    output += highlightXmlText(line.slice(cursor));
+    return output;
+}
+
+function highlightXmlText(value) {
+    if (!value) return '';
+    return '<span class="xml-text">' + escapeHtml(value) + '</span>';
+}
+
+function highlightXmlTag(tag) {
+    if (/^<!--/.test(tag) || /^<!\[CDATA/.test(tag)) {
+        return '<span class="xml-comment">' + escapeHtml(tag) + '</span>';
+    }
+    const match = tag.match(/^(<\??\/?)([A-Za-z_][\w:.-]*)([\s\S]*?)(\/?>)$/);
+    if (!match) return escapeHtml(tag);
+    let output = escapeHtml(match[1]) + '<span class="xml-tag">' +
+        escapeHtml(match[2]) + '</span>';
+    const attributes = match[3];
+    let cursor = 0;
+    const attributePattern = /([A-Za-z_:][\w:.-]*)(\s*=\s*)(".*?"|'.*?')/g;
+    let attribute;
+    while ((attribute = attributePattern.exec(attributes)) !== null) {
+        output += escapeHtml(attributes.slice(cursor, attribute.index));
+        output += '<span class="xml-attr-name">' + escapeHtml(attribute[1]) + '</span>' +
+            escapeHtml(attribute[2]) + '<span class="xml-attr-value">' +
+            escapeHtml(attribute[3]) + '</span>';
+        cursor = attribute.index + attribute[0].length;
+    }
+    output += escapeHtml(attributes.slice(cursor)) + escapeHtml(match[4]);
+    return output;
 }
 
 function setText(id, value) {

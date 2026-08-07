@@ -20,6 +20,7 @@ class DashboardApp {
         this.currentRecord = null;
         this.xmlAnalysis = null;
         this.rawDisplayMode = 'formatted';
+        this.xmlSplit = true;
         this.rawWrap = false;
         this.refreshTimer = null;
         this.overviewController = null;
@@ -40,6 +41,7 @@ class DashboardApp {
             recordDetail: document.getElementById('record-detail'),
             rawView: document.getElementById('record-raw-view'),
             xmlHighlightView: document.getElementById('xml-highlight-view'),
+            sectionToggle: document.getElementById('toggle-xml-sections'),
             shipAnalysis: document.getElementById('ship-analysis'),
             shipAnalysisError: document.getElementById('ship-analysis-error'),
             shipAnalysisMetrics: document.getElementById('ship-analysis-metrics'),
@@ -126,6 +128,14 @@ class DashboardApp {
         this.elements.formatToggle.addEventListener('click', () => {
             if (!this.xmlAnalysis?.valid) return;
             this.rawDisplayMode = this.rawDisplayMode === 'formatted' ? 'raw' : 'formatted';
+            this.renderRawView();
+        });
+        this.elements.sectionToggle.addEventListener('click', () => {
+            if (!this.xmlAnalysis?.valid || !isVerifiedShip(
+                this.currentRecord?.info,
+                this.currentRecord?.xml_status,
+            )) return;
+            this.xmlSplit = !this.xmlSplit;
             this.renderRawView();
         });
         this.elements.wrapToggle.addEventListener('click', () => {
@@ -376,6 +386,7 @@ class DashboardApp {
         const hasRaw = Boolean(record.raw_data);
         this.xmlAnalysis = analyzeXml(record.raw_data);
         this.rawDisplayMode = this.xmlAnalysis.valid ? 'formatted' : 'raw';
+        this.xmlSplit = true;
         this.rawWrap = false;
         setText('record-title', '#' + info.save_id);
         setText('record-type', formatType(info.save_type) + ' · ' + formatBytes(info.len));
@@ -397,6 +408,8 @@ class DashboardApp {
         document.getElementById('download-record').disabled = !hasRaw;
         document.getElementById('copy-record-raw').disabled = !hasRaw;
         this.elements.formatToggle.disabled = !this.xmlAnalysis.valid;
+        this.elements.sectionToggle.disabled = !this.xmlAnalysis.valid ||
+            !isVerifiedShip(info, record.xml_status);
         this.elements.wrapToggle.disabled = !hasRaw;
         this.renderShipAnalysis(record);
         this.renderRawView();
@@ -414,12 +427,15 @@ class DashboardApp {
                 ? this.xmlAnalysis.formatted
                 : this.currentRecord.raw_data;
 
-        const useInspector = formatted && isVerifiedShip(
+        const verifiedShip = isVerifiedShip(
             this.currentRecord?.info,
             this.currentRecord?.xml_status,
         );
-        if (useInspector) {
-            this.elements.xmlHighlightView.innerHTML = renderXmlInspector(this.xmlAnalysis.formatted);
+        const useInspector = formatted && verifiedShip && this.xmlSplit;
+        if (formatted) {
+            this.elements.xmlHighlightView.innerHTML = useInspector
+                ? renderXmlInspector(this.xmlAnalysis.formatted)
+                : renderXmlContinuous(this.xmlAnalysis.formatted);
             this.elements.xmlHighlightView.hidden = false;
             this.elements.rawView.hidden = true;
         } else {
@@ -428,10 +444,13 @@ class DashboardApp {
             this.elements.rawView.hidden = false;
         }
         setText('raw-view-mode', formatted
-            ? (useInspector ? '高亮视图 · ' : '格式化视图 · ') + formatNumber(this.xmlAnalysis.lines) + ' 行'
+            ? (useInspector ? '分区高亮视图 · ' : '连续高亮视图 · ') +
+                formatNumber(this.xmlAnalysis.lines) + ' 行'
             : '原始视图');
         this.elements.formatToggle.textContent = formatted ? '查看原文' : '格式化显示';
         this.elements.formatToggle.setAttribute('aria-pressed', String(formatted));
+        this.elements.sectionToggle.textContent = this.xmlSplit ? '连续显示' : '分区显示';
+        this.elements.sectionToggle.setAttribute('aria-pressed', String(this.xmlSplit));
         this.elements.wrapToggle.textContent = this.rawWrap ? '关闭换行' : '自动换行';
         this.elements.wrapToggle.setAttribute('aria-pressed', String(this.rawWrap));
         this.elements.rawView.classList.toggle('is-wrapped', this.rawWrap);
@@ -773,6 +792,11 @@ function renderXmlInspector(formatted) {
         '</summary><pre class="xml-highlight-view__code">' +
         highlightXml(block.lines.join('\n')) + '</pre></details>'
     ).join('');
+}
+
+function renderXmlContinuous(formatted) {
+    return '<pre class="xml-highlight-view__root">' +
+        highlightXml(formatted) + '</pre>';
 }
 
 function highlightXml(xml) {

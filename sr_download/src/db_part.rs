@@ -180,7 +180,14 @@ impl DbData {
     }
 
     pub fn xml_status(&self) -> String {
-        self.verify_ship().to_string()
+        match self.save_type {
+            SaveType::Ship => self.verify_ship().to_string(),
+            SaveType::Save if self.xml_tested => "verified save".to_string(),
+            SaveType::Save => "not xml".to_string(),
+            SaveType::Unknown if self.xml_tested => "valid xml".to_string(),
+            SaveType::Unknown => "not xml".to_string(),
+            SaveType::None => "empty data".to_string(),
+        }
     }
 
     /// 直接从 full_data 里选即可
@@ -195,6 +202,36 @@ impl DbData {
         .await
         .ok()?
         .map(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod xml_status_tests {
+    use super::{DbData, SaveType};
+
+    fn data(save_type: SaveType, text: &str) -> DbData {
+        DbData::new(1, text.to_string(), save_type)
+    }
+
+    #[test]
+    fn reports_valid_save_as_save_instead_of_not_ship() {
+        assert_eq!(
+            data(SaveType::Save, "<SaveState />").xml_status(),
+            "verified save"
+        );
+    }
+
+    #[test]
+    fn reports_unknown_well_formed_document_as_valid_xml() {
+        assert_eq!(
+            data(SaveType::Unknown, "<Document />").xml_status(),
+            "valid xml"
+        );
+    }
+
+    #[test]
+    fn reports_malformed_non_ship_document() {
+        assert_eq!(data(SaveType::Save, "<SaveState>").xml_status(), "not xml");
     }
 }
 

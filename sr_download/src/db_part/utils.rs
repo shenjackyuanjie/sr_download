@@ -1,5 +1,5 @@
 use colored::Colorize;
-use quick_xml::{Reader, de::from_str, events::Event, name::QName};
+use quick_xml::{Reader, de::from_str, errors::IllFormedError, events::Event, name::QName};
 use serde::Deserialize;
 use sqlx::{
     PgPool, Row,
@@ -208,9 +208,24 @@ impl std::fmt::Display for ShipVerifyState {
 pub fn verify_xml(data: &str) -> quick_xml::Result<()> {
     let mut reader = Reader::from_str(data);
     reader.config_mut().trim_text(true);
+    reader.config_mut().check_comments = true;
+    let mut open_elements = Vec::new();
     loop {
         match reader.read_event() {
-            Ok(Event::Eof) => break,
+            Ok(Event::Start(element)) => {
+                open_elements.push(element.name().as_ref().to_vec());
+            }
+            Ok(Event::End(_)) => {
+                let _ = open_elements.pop();
+            }
+            Ok(Event::Eof) => {
+                if let Some(element) = open_elements.last() {
+                    return Err(quick_xml::Error::IllFormed(IllFormedError::MissingEndTag(
+                        String::from_utf8_lossy(element).into_owned(),
+                    )));
+                }
+                break;
+            }
             Ok(_) => (),
             Err(e) => return Err(e),
         }

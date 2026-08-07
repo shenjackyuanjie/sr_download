@@ -9,8 +9,6 @@ pub mod db_names {
     pub const FULL_DATA_TABLE: &str = "full_data";
     /// 用于存储 db 版本号的表
     pub const DB_VERSION_TABLE: &str = "db_version";
-    /// 老的 sea_orm 的标记表
-    pub const SEA_ORM_TABLE: &str = "seaql_migrations";
 
     /// 更新 xml_tested 的函数
     pub const UPDATE_XML_TESTED: &str = "update_xml_tested";
@@ -21,14 +19,15 @@ pub mod db_names {
 /// 当前数据库版本 (用于检查是否需要更新)
 ///
 /// ## 版本历史
-/// 1. 原始版本, 基于 sea_orm 的版本
+/// 1. 原始版本, 基于 SeaORM 的版本
 /// 2. 初始版本, 开始自己写定义了
 ///    各个表的信息可以在对应的文件中查看
 ///    - `main_data` 表
 ///    - `long_data` 表
 ///    - `full_data` 视图
 ///    - `ships` 表
-pub const CURRENT_DB_VERSION: i32 = 2;
+/// 3. 清理 SeaORM 遗留表并重建干净数据表
+pub const CURRENT_DB_VERSION: i32 = 3;
 
 pub const TEXT_DATA_MAX_LEN: usize = 1024;
 pub type SaveId = u32;

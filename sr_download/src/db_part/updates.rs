@@ -9,23 +9,6 @@ use crate::db_part::defines::{
     CURRENT_DB_VERSION, UPSERT_DB_VERSION_SQL,
 };
 
-pub mod pre_local {
-    use super::*;
-    use crate::db_part::defines::check_table_exists;
-
-    pub async fn try_merge(db: &PgPool, conf: &ConfigFile) {
-        event!(Level::INFO, "尝试从 sea_orm 表迁移数据");
-        if !check_table_exists(db, defines::db_names::SEA_ORM_TABLE, &conf.db.schema).await {
-            event!(Level::DEBUG, "sea_orm 表不存在, 不需要迁移");
-            return;
-        }
-        event!(
-            Level::DEBUG,
-            "当前仅保留 seaql_migrations 兼容检测, 不再执行 SeaORM 迁移"
-        );
-    }
-}
-
 async fn ensure_schema(db: &PgPool, conf: &ConfigFile) -> anyhow::Result<()> {
     if !defines::check_type_exists(db, "save_type", &conf.db.schema).await {
         db.execute(CREATE_SAVE_TYPE_SQL).await?;
@@ -60,7 +43,6 @@ async fn ensure_schema(db: &PgPool, conf: &ConfigFile) -> anyhow::Result<()> {
 
 pub async fn update_db(db: &PgPool, conf: &ConfigFile) {
     event!(Level::INFO, "开始更新数据库");
-    pre_local::try_merge(db, conf).await;
     if let Err(e) = ensure_schema(db, conf).await {
         event!(Level::ERROR, "无法更新数据库结构: {:?}", e);
         return;

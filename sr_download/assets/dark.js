@@ -1,54 +1,53 @@
-(function() {
-    'use strict';
+'use strict';
 
+(() => {
     const storageKey = 'theme-preference';
-    const themeAttribute = 'data-theme';
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-    // 获取当前主题
-    function getThemePreference() {
-        const saved = localStorage.getItem(storageKey);
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        return saved || (systemDark ? 'dark' : 'light');
-    }
-
-    // 切换主题
-    function toggleTheme() {
-        const current = document.documentElement.getAttribute(themeAttribute);
-        const newTheme = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute(themeAttribute, newTheme);
-        localStorage.setItem(storageKey, newTheme);
-        updateToggleButton(newTheme);
-    }
-
-    // 更新切换按钮
-    function updateToggleButton(theme) {
-        toggleButton.textContent = theme === 'dark' ? '🌞' : '🌙';
-        toggleButton.setAttribute('aria-label', theme === 'dark' ? '切换到浅色模式' : '切换到深色模式');
-        toggleButton.setAttribute('title', theme === 'dark' ? '切换到浅色模式' : '切换到深色模式');
-    }
-
-    // 创建切换按钮
-    const toggleButton = document.createElement('button');
-    toggleButton.className = 'theme-toggle';
-    toggleButton.type = 'button';
-
-    // 初始化
-    function init() {
-        const theme = getThemePreference();
-        document.documentElement.setAttribute(themeAttribute, theme);
-        updateToggleButton(theme);
-        document.body.appendChild(toggleButton);
-        toggleButton.addEventListener('click', toggleTheme);
-    }
-
-    // 系统主题变化监听
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-        if (!localStorage.getItem(storageKey)) {
-            const theme = e.matches ? 'dark' : 'light';
-            document.documentElement.setAttribute(themeAttribute, theme);
-            updateToggleButton(theme);
+    function storedTheme() {
+        try {
+            const value = localStorage.getItem(storageKey);
+            return value === 'light' || value === 'dark' ? value : null;
+        } catch {
+            return null;
         }
+    }
+
+    function storeTheme(theme) {
+        try {
+            localStorage.setItem(storageKey, theme);
+        } catch {
+            // The selected theme still applies for this page when storage is unavailable.
+        }
+    }
+
+    function resolvedTheme() {
+        return storedTheme() || (mediaQuery.matches ? 'dark' : 'light');
+    }
+
+    function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        const button = document.getElementById('theme-toggle');
+        if (!button) return;
+        const nextThemeLabel = theme === 'dark' ? '浅色' : '深色';
+        button.textContent = nextThemeLabel + '模式';
+        button.setAttribute('aria-label', '切换到' + nextThemeLabel + '模式');
+        button.title = '切换到' + nextThemeLabel + '模式';
+    }
+
+    applyTheme(resolvedTheme());
+
+    document.addEventListener('DOMContentLoaded', () => {
+        applyTheme(resolvedTheme());
+        document.getElementById('theme-toggle')?.addEventListener('click', () => {
+            const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+            storeTheme(nextTheme);
+            applyTheme(nextTheme);
+        });
     });
 
-    document.addEventListener('DOMContentLoaded', init);
+    mediaQuery.addEventListener('change', () => {
+        if (!storedTheme()) applyTheme(resolvedTheme());
+    });
 })();

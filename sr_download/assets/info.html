@@ -34,6 +34,8 @@
                     aria-selected="true" aria-controls="panel-overview" data-tab-target="overview">数据总览</button>
                 <button class="tab" id="tab-record" type="button" role="tab"
                     aria-selected="false" aria-controls="panel-record" data-tab-target="record" tabindex="-1">档案查询</button>
+                <button class="tab" id="tab-market" type="button" role="tab"
+                    aria-selected="false" aria-controls="panel-market" data-tab-target="market" tabindex="-1">市场</button>
             </nav>
 
             <main class="main-content" id="main-content">
@@ -74,6 +76,46 @@
                             </table>
                         </div>
                     </section>
+                </section>
+
+                <section class="tab-panel" id="panel-market" role="tabpanel"
+                    aria-labelledby="tab-market" data-tab-panel="market" hidden>
+                    <div class="page-heading">
+                        <div>
+                            <p class="eyebrow">Market</p>
+                            <h1>数据市场</h1>
+                            <p class="page-heading__description">浏览最近入库的飞船、存档和其他 XML 数据。</p>
+                        </div>
+                        <div class="refresh-control">
+                            <span id="market-updated-at">尚未更新</span>
+                            <button class="button button--secondary" id="refresh-market" type="button">刷新市场</button>
+                        </div>
+                    </div>
+                    <div class="market-toolbar">
+                        <label class="market-filter">类型
+                            <select id="market-type">
+                                <option value="all">全部数据</option>
+                                <option value="ship">飞船</option>
+                                <option value="save">存档</option>
+                                <option value="unknown">其他 XML</option>
+                            </select>
+                        </label>
+                        <label class="market-filter">每页
+                            <select id="market-limit">
+                                <option value="24">24 条</option>
+                                <option value="48" selected>48 条</option>
+                                <option value="96">96 条</option>
+                            </select>
+                        </label>
+                        <span class="market-count" id="market-count">—</span>
+                    </div>
+                    <div class="notice notice--error" id="market-error" role="alert" hidden></div>
+                    <section class="market-grid" id="market-grid" aria-live="polite">
+                        <div class="market-empty" id="market-loading">正在载入最近数据…</div>
+                    </section>
+                    <div class="market-actions">
+                        <button class="button button--secondary" id="market-load-more" type="button" hidden>加载更早的数据</button>
+                    </div>
                 </section>
 
                 <section class="tab-panel" id="panel-record" role="tabpanel"
@@ -133,6 +175,14 @@
                                     <button class="text-button" id="copy-record-hash" type="button">复制</button></dd>
                             </div>
                         </dl>
+                        <section class="xml-outline" aria-labelledby="xml-outline-heading">
+                            <div class="section-heading section-heading--compact">
+                                <div><h3 id="xml-outline-heading">XML 结构摘要</h3><p>按实际文档节点统计，帮助快速定位存档内容。</p></div>
+                            </div>
+                            <div class="xml-outline__metrics" id="xml-outline-metrics"></div>
+                            <div class="xml-outline__facts" id="xml-outline-facts"></div>
+                            <div class="xml-outline__sections" id="xml-outline-sections"></div>
+                        </section>
                         <section class="ship-analysis" id="ship-analysis" aria-labelledby="ship-analysis-heading" hidden>
                             <header class="ship-analysis__header">
                                 <div>

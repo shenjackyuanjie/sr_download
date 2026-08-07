@@ -141,6 +141,17 @@ enable = true
 质量字段同时提供目录单位 catalog_units 和兼容旧分析脚本的 scaled_units，
 后者使用 scale=500。
 
+### GET `/api/market`
+获取最近入库的数据列表，用于网页“市场”页面。
+
+查询参数：
+
+- `limit`：每页数量，默认 48，最大 100
+- `type`：`all`、`ship`、`save` 或 `unknown`
+- `before`：只返回记录 ID 小于该值的数据，用于继续加载更早记录
+
+返回的每条记录包含记录 ID、数据类型、长度、Blake3、XML 是否通过和入库时间。
+
 ### GET `/resync`
 触发数据重新同步操作
 

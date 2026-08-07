@@ -1,11 +1,12 @@
 use std::io::Write;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{FromRow, PgPool, Postgres, QueryBuilder};
 
 use crate::{
     SaveId,
-    db_part::{DbData, utils},
+    db_part::{DbData, SaveType, utils},
     net::DownloadFile,
     web_part::{api_request_counter, service_uptime, web_request_counter},
 };
@@ -128,6 +129,92 @@ pub struct DashboardOverview {
     pub latest_ship: Option<LastShip>,
     pub latest_save: Option<LastSave>,
     pub service: ServiceStatus,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MarketQuery {
+    pub limit: Option<u16>,
+    #[serde(rename = "type")]
+    pub save_type: Option<String>,
+    pub before: Option<SaveId>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MarketPage {
+    pub records: Vec<MarketRecord>,
+    pub has_more: bool,
+    pub next_before: Option<SaveId>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct MarketRecord {
+    pub save_id: SaveId,
+    pub save_type: String,
+    pub len: i64,
+    pub blake_hash: String,
+    pub xml_tested: bool,
+    pub recorded_at: String,
+}
+
+#[derive(Debug, FromRow)]
+struct MarketRow {
+    save_id: i32,
+    save_type: SaveType,
+    len: i64,
+    blake_hash: String,
+    xml_tested: Option<bool>,
+    time: DateTime<Utc>,
+}
+
+impl From<MarketRow> for MarketRecord {
+    fn from(row: MarketRow) -> Self {
+        Self {
+            save_id: row.save_id as SaveId,
+            save_type: row.save_type.to_string(),
+            len: row.len,
+            blake_hash: row.blake_hash,
+            xml_tested: row.xml_tested.unwrap_or(false),
+            recorded_at: row.time.to_rfc3339(),
+        }
+    }
+}
+
+impl MarketPage {
+    pub async fn from_db(
+        db: &PgPool,
+        limit: u16,
+        save_type: Option<SaveType>,
+        before: Option<SaveId>,
+    ) -> Result<Self, sqlx::Error> {
+        let limit = i64::from(limit);
+        let mut query = QueryBuilder::<Postgres>::new(
+            "SELECT save_id, save_type, len, blake_hash, xml_tested, time
+             FROM main_data
+             WHERE len > 0",
+        );
+        match save_type {
+            Some(save_type) => query.push(" AND save_type = ").push_bind(save_type),
+            None => query.push(" AND save_type != ").push_bind(SaveType::None),
+        };
+        if let Some(before) = before {
+            query.push(" AND save_id < ").push_bind(before as i32);
+        }
+        query
+            .push(" ORDER BY save_id DESC LIMIT ")
+            .push_bind(limit + 1);
+
+        let mut rows = query.build_query_as::<MarketRow>().fetch_all(db).await?;
+        let has_more = rows.len() > limit as usize;
+        rows.truncate(limit as usize);
+        let next_before = has_more
+            .then(|| rows.last().map(|row| row.save_id as SaveId))
+            .flatten();
+        Ok(Self {
+            records: rows.into_iter().map(Into::into).collect(),
+            has_more,
+            next_before,
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize)]

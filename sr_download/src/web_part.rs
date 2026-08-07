@@ -17,9 +17,10 @@ pub mod ship_analysis;
 pub mod traits;
 
 use handlers::{
-    api_overview, api_record_analysis, api_record_detail, api_record_raw, api_service_status,
-    dashboard_page, empty_info, empty_resync, get_data_by_id, get_data_info_by_id, get_last_data,
-    get_last_save, get_last_ship, jump_to_dashboard, jump_to_dashboard_from_root, resync_request,
+    api_market, api_overview, api_record_analysis, api_record_detail, api_record_raw,
+    api_service_status, dashboard_page, empty_info, empty_resync, get_data_by_id,
+    get_data_info_by_id, get_last_data, get_last_save, get_last_ship, jump_to_dashboard,
+    jump_to_dashboard_from_root, resync_request,
 };
 
 pub static WEB_REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -72,6 +73,7 @@ pub async fn web_main() -> anyhow::Result<()> {
         .route("/download/{id}", get(get_data_by_id).post(get_data_by_id))
         .route("/api/overview", get(api_overview))
         .route("/api/service", get(api_service_status))
+        .route("/api/market", get(api_market))
         .route("/api/records/{id}", get(api_record_detail))
         .route("/api/records/{id}/analysis", get(api_record_analysis))
         .route("/api/records/{id}/raw", get(api_record_raw))

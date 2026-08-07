@@ -2,7 +2,7 @@ use std::{sync::LazyLock, time::Duration};
 
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse},
 };
@@ -16,7 +16,8 @@ use crate::{
 use super::{
     INFO_PAGE, RESYNC_TOKEN, api_request_counter_pp,
     models::{
-        DashboardOverview, LastData, LastSave, LastShip, RawData, RecordDetail, ServiceStatus,
+        DashboardOverview, LastData, LastSave, LastShip, MarketPage, MarketQuery, RawData,
+        RecordDetail, ServiceStatus,
     },
     response::WebResponse,
     ship_analysis::{ShipAnalysis, analyze_ship},
@@ -94,6 +95,33 @@ pub async fn api_overview(State(db): State<PgPool>) -> Json<WebResponse<Dashboar
 pub async fn api_service_status() -> Json<WebResponse<ServiceStatus>> {
     api_request_counter_pp();
     Json(WebResponse::new_normal(ServiceStatus::collect()))
+}
+
+pub async fn api_market(
+    State(db): State<PgPool>,
+    Query(query): Query<MarketQuery>,
+) -> Json<WebResponse<MarketPage>> {
+    api_request_counter_pp();
+    let limit = query.limit.unwrap_or(48).clamp(1, 100);
+    let save_type = match query.save_type.as_deref().unwrap_or("all") {
+        "" | "all" => None,
+        "ship" => Some(SaveType::Ship),
+        "save" => Some(SaveType::Save),
+        "unknown" => Some(SaveType::Unknown),
+        value => {
+            return Json(WebResponse::new_error(
+                StatusCode::BAD_REQUEST,
+                format!("unsupported market type: {value}"),
+            ));
+        }
+    };
+    match MarketPage::from_db(&db, limit, save_type, query.before).await {
+        Ok(page) => Json(WebResponse::new_normal(page)),
+        Err(error) => Json(WebResponse::new_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("failed to query market records: {error}"),
+        )),
+    }
 }
 
 pub async fn api_record_detail(

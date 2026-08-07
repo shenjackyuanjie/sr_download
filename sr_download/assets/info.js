@@ -2,6 +2,7 @@
 
 const API = Object.freeze({
     overview: '/api/overview',
+    market: '/api/market',
     record: (id) => '/api/records/' + id,
     analysis: (id) => '/api/records/' + id + '/analysis',
     raw: (id) => '/api/records/' + id + '/raw',
@@ -9,7 +10,7 @@ const API = Object.freeze({
 
 const DEFAULT_MIN_ID = 76858;
 const REFRESH_INTERVAL_MS = 30000;
-const VALID_TABS = new Set(['overview', 'record']);
+const VALID_TABS = new Set(['overview', 'market', 'record']);
 
 class DashboardApp {
     constructor() {
@@ -24,6 +25,13 @@ class DashboardApp {
         this.rawWrap = false;
         this.refreshTimer = null;
         this.overviewController = null;
+        this.marketController = null;
+        this.marketRecords = [];
+        this.marketBefore = null;
+        this.marketHasMore = false;
+        this.marketLoaded = false;
+        this.marketFilter = 'all';
+        this.marketLimit = 48;
         this.lookupController = null;
         this.toastTimer = null;
 
@@ -33,6 +41,14 @@ class DashboardApp {
             refresh: document.getElementById('refresh-overview'),
             overviewError: document.getElementById('overview-error'),
             latestRecords: document.getElementById('latest-records'),
+            marketRefresh: document.getElementById('refresh-market'),
+            marketType: document.getElementById('market-type'),
+            marketLimit: document.getElementById('market-limit'),
+            marketUpdatedAt: document.getElementById('market-updated-at'),
+            marketCount: document.getElementById('market-count'),
+            marketError: document.getElementById('market-error'),
+            marketGrid: document.getElementById('market-grid'),
+            marketLoadMore: document.getElementById('market-load-more'),
             lookupForm: document.getElementById('lookup-form'),
             lookupInput: document.getElementById('record-id'),
             lookupSubmit: document.getElementById('lookup-submit'),
@@ -91,6 +107,16 @@ class DashboardApp {
         });
 
         this.elements.refresh.addEventListener('click', () => this.loadOverview());
+        this.elements.marketRefresh.addEventListener('click', () => this.loadMarket(true));
+        this.elements.marketType.addEventListener('change', () => {
+            this.marketFilter = this.elements.marketType.value;
+            this.loadMarket(true);
+        });
+        this.elements.marketLimit.addEventListener('change', () => {
+            this.marketLimit = Number(this.elements.marketLimit.value) || 48;
+            this.loadMarket(true);
+        });
+        this.elements.marketLoadMore.addEventListener('click', () => this.loadMarket(false));
         this.elements.lookupForm.addEventListener('submit', (event) => {
             event.preventDefault();
             this.lookupRecord();
@@ -107,6 +133,12 @@ class DashboardApp {
             if (copyButton) {
                 this.copyText(copyButton.dataset.copyValue, '哈希已复制');
             }
+        });
+        this.elements.marketGrid.addEventListener('click', (event) => {
+            const recordButton = event.target.closest('[data-record-id]');
+            if (recordButton) this.openRecord(Number(recordButton.dataset.recordId));
+            const copyButton = event.target.closest('[data-copy-value]');
+            if (copyButton) this.copyText(copyButton.dataset.copyValue, '哈希已复制');
         });
 
         document.getElementById('copy-record-id').addEventListener('click', () => {
@@ -131,10 +163,7 @@ class DashboardApp {
             this.renderRawView();
         });
         this.elements.sectionToggle.addEventListener('click', () => {
-            if (!this.xmlAnalysis?.valid || !isVerifiedShip(
-                this.currentRecord?.info,
-                this.currentRecord?.xml_status,
-            )) return;
+            if (!this.xmlAnalysis?.valid) return;
             this.xmlSplit = !this.xmlSplit;
             this.renderRawView();
         });
@@ -218,6 +247,7 @@ class DashboardApp {
 
         this.clearRefreshTimer();
         if (tab === 'overview') this.scheduleRefresh();
+        if (tab === 'market' && !this.marketLoaded && !this.marketController) this.loadMarket(true);
         if (updateUrl) this.writeLocation(tab);
     }
 
@@ -282,6 +312,65 @@ class DashboardApp {
             this.elements.latestRecords.innerHTML =
                 '<tr class="table-empty"><td colspan="6">总览数据载入失败，请稍后重试。</td></tr>';
         }
+    }
+
+    async loadMarket(reset = true) {
+        if (this.marketController) this.marketController.abort();
+        if (reset) {
+            this.marketBefore = null;
+            this.marketRecords = [];
+            this.marketHasMore = false;
+            this.marketLoaded = false;
+            this.elements.marketGrid.innerHTML = '<div class="market-empty">正在载入最近数据…</div>';
+        }
+        const controller = new AbortController();
+        this.marketController = controller;
+        this.elements.marketError.hidden = true;
+        this.setButtonBusy(this.elements.marketRefresh, true, '刷新中');
+        if (!reset) this.setButtonBusy(this.elements.marketLoadMore, true, '载入中');
+
+        try {
+            const params = new URLSearchParams({
+                limit: String(this.marketLimit),
+                type: this.marketFilter,
+            });
+            if (!reset && this.marketBefore !== null) {
+                params.set('before', String(this.marketBefore));
+            }
+            const payload = await this.fetchPayload(API.market + '?' + params.toString(), controller.signal);
+            const page = payload.data || {};
+            const records = Array.isArray(page.records) ? page.records : [];
+            this.marketRecords = reset ? records : this.marketRecords.concat(records);
+            this.marketBefore = page.next_before ?? null;
+            this.marketHasMore = Boolean(page.has_more);
+            this.marketLoaded = true;
+            this.renderMarket();
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            this.elements.marketError.textContent = '市场数据载入失败：' + (error.message || '未知错误');
+            this.elements.marketError.hidden = false;
+            if (reset) {
+                this.marketRecords = [];
+                this.renderMarket();
+            }
+        } finally {
+            if (this.marketController === controller) {
+                this.marketController = null;
+                this.setButtonBusy(this.elements.marketRefresh, false, '刷新市场');
+                if (!reset) this.setButtonBusy(this.elements.marketLoadMore, false, '加载更早的数据');
+            }
+        }
+    }
+
+    renderMarket() {
+        this.elements.marketGrid.innerHTML = this.marketRecords.length
+            ? this.marketRecords.map(renderMarketCard).join('')
+            : '<div class="market-empty"><strong>这里还没有数据</strong><span>当前筛选条件下没有可展示的记录。</span></div>';
+        this.elements.marketLoadMore.hidden = !this.marketHasMore;
+        this.elements.marketCount.textContent = this.marketRecords.length
+            ? '已显示 ' + formatNumber(this.marketRecords.length) + ' 条'
+            : '暂无记录';
+        this.elements.marketUpdatedAt.textContent = '更新于 ' + formatClock(new Date());
     }
 
     setServiceState(state, label) {
@@ -400,6 +489,7 @@ class DashboardApp {
         setText('record-attribute-count', this.xmlAnalysis.valid ? formatNumber(this.xmlAnalysis.attributes) : '—');
         setText('record-hash', info.blake_hash || '—');
         setText('raw-size', hasRaw ? formatBytes(new Blob([record.raw_data]).size) : '无原文');
+        renderXmlOutline(this.xmlAnalysis);
 
         const xmlStatus = document.getElementById('record-xml-status');
         xmlStatus.dataset.state = info.xml_tested ? 'ok' : 'warn';
@@ -408,8 +498,7 @@ class DashboardApp {
         document.getElementById('download-record').disabled = !hasRaw;
         document.getElementById('copy-record-raw').disabled = !hasRaw;
         this.elements.formatToggle.disabled = !this.xmlAnalysis.valid;
-        this.elements.sectionToggle.disabled = !this.xmlAnalysis.valid ||
-            !isVerifiedShip(info, record.xml_status);
+        this.elements.sectionToggle.disabled = !this.xmlAnalysis.valid;
         this.elements.wrapToggle.disabled = !hasRaw;
         this.renderShipAnalysis(record);
         this.renderRawView();
@@ -427,14 +516,10 @@ class DashboardApp {
                 ? this.xmlAnalysis.formatted
                 : this.currentRecord.raw_data;
 
-        const verifiedShip = isVerifiedShip(
-            this.currentRecord?.info,
-            this.currentRecord?.xml_status,
-        );
-        const useInspector = formatted && verifiedShip && this.xmlSplit;
+        const useInspector = formatted && this.xmlSplit;
         if (formatted) {
             this.elements.xmlHighlightView.innerHTML = useInspector
-                ? renderXmlInspector(this.xmlAnalysis.formatted)
+                ? renderXmlInspector(this.xmlAnalysis.formatted, this.xmlAnalysis.outline)
                 : renderXmlContinuous(this.xmlAnalysis.formatted);
             this.elements.xmlHighlightView.hidden = false;
             this.elements.rawView.hidden = true;
@@ -559,6 +644,7 @@ class DashboardApp {
         this.elements.shipAnalysis.hidden = true;
         this.elements.xmlHighlightView.hidden = true;
         this.elements.rawView.hidden = false;
+        renderXmlOutline(null);
         this.showQueryPlaceholder('等待查询', '输入一个记录 ID，即可读取归档详情。', 'idle');
     }
 
@@ -668,6 +754,37 @@ function renderRecordRow(item) {
             '">查看详情</button></td></tr>';
 }
 
+function renderMarketCard(record) {
+    const id = Number(record.save_id);
+    const xmlState = record.xml_tested ? 'ok' : 'warn';
+    const xmlLabel = record.xml_tested ? 'XML 通过' : 'XML 未通过';
+    const hash = record.blake_hash || '';
+    return '<article class="market-card">' +
+        '<header class="market-card__header"><span class="type-pill type-pill--' +
+        escapeHtml(String(record.save_type || 'unknown').toLowerCase()) + '">' +
+        escapeHtml(formatType(record.save_type)) + '</span><span class="market-card__time">' +
+        escapeHtml(formatRecordTime(record.recorded_at)) + '</span></header>' +
+        '<div class="market-card__identity"><button class="record-id-button" type="button" data-record-id="' + id + '">#' +
+        formatNumber(id) + '</button><span class="status-badge" data-state="' + xmlState + '">' + xmlLabel + '</span></div>' +
+        '<dl class="market-card__meta"><div><dt>大小</dt><dd>' + escapeHtml(formatBytes(record.len)) + '</dd></div>' +
+        '<div><dt>数据类型</dt><dd>' + escapeHtml(formatType(record.save_type)) + '</dd></div></dl>' +
+        '<div class="market-card__hash"><code title="复制完整哈希">' + escapeHtml(truncateHash(hash)) + '</code>' +
+        '<button class="text-button" type="button" data-copy-value="' + escapeHtml(hash) + '">复制</button></div>' +
+        '<button class="button button--secondary market-card__action" type="button" data-record-id="' + id + '">查看档案</button>' +
+        '</article>';
+}
+
+function formatRecordTime(value) {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '时间未知';
+    return new Intl.DateTimeFormat('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    }).format(date);
+}
+
 function isVerifiedShip(info, xmlStatus) {
     return String(info?.save_type || '').toLowerCase() === 'ship' &&
         Boolean(info?.xml_tested) &&
@@ -748,34 +865,33 @@ function renderPodAnalysis(pod) {
         '</code></div>' + (steps || '<div class="analysis-list__meta">没有级序步骤</div>') + '</div>';
 }
 
-function renderXmlInspector(formatted) {
+function renderXmlInspector(formatted, outline = null) {
     const lines = String(formatted || '').split('\n');
     const blocks = [];
     let rootLines = [];
     let active = null;
     let activeDepth = 0;
-    const sectionNames = {
-        Parts: '部件 Parts',
-        Connections: '连接 Connections',
-        DisconnectedParts: '断开部件 DisconnectedParts',
-    };
 
     for (const line of lines) {
         const trimmed = line.trim();
         const depth = Math.max(0, Math.floor((line.length - line.trimStart().length) / 2));
-        const opening = trimmed.match(/^<(Parts|Connections|DisconnectedParts)(?:\s|>)/);
+        const opening = trimmed.match(/^<([A-Za-z_][\w:.-]*)(?:\s|>|\/)/);
         if (!active && depth === 1 && opening) {
             if (rootLines.length) {
                 blocks.push({ type: 'root', lines: rootLines });
                 rootLines = [];
             }
-            active = { name: opening[1], lines: [line] };
+            active = { name: opening[1], lines: [line], depth };
             activeDepth = depth;
+            if (/\/\s*>$/.test(trimmed)) {
+                blocks.push({ type: 'section', ...active });
+                active = null;
+            }
             continue;
         }
         if (active) {
             active.lines.push(line);
-            if (depth === activeDepth && new RegExp('^</' + active.name + '>').test(trimmed)) {
+            if (depth === activeDepth && new RegExp('^</' + escapeRegExp(active.name) + '>').test(trimmed)) {
                 blocks.push({ type: 'section', ...active });
                 active = null;
             }
@@ -788,10 +904,29 @@ function renderXmlInspector(formatted) {
 
     return blocks.map((block) => block.type === 'root'
         ? '<pre class="xml-highlight-view__root">' + highlightXml(block.lines.join('\n')) + '</pre>'
-        : '<details open><summary>' + escapeHtml(sectionNames[block.name] || block.name) +
+        : '<details open class="xml-section-block xml-section-block--' +
+            escapeHtml(String(block.name).toLowerCase().replace(/[^a-z0-9_-]/g, '-')) + '"><summary>' +
+            escapeHtml(formatXmlSectionName(block.name, outline)) +
         '</summary><pre class="xml-highlight-view__code">' +
         highlightXml(block.lines.join('\n')) + '</pre></details>'
     ).join('');
+}
+
+function formatXmlSectionName(name, outline) {
+    const labels = {
+        Parts: '部件 · Parts',
+        Connections: '连接 · Connections',
+        DisconnectedParts: '断开部件 · DisconnectedParts',
+        Nodes: '场景节点 · Nodes',
+        Ship: '飞船 · Ship',
+    };
+    const section = outline?.sections?.find((item) => item.name === name);
+    const count = section?.children;
+    return (labels[name] || name) + (Number.isFinite(count) ? ' · ' + formatNumber(count) + ' 个子节点' : '');
+}
+
+function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function renderXmlContinuous(formatted) {
@@ -901,6 +1036,7 @@ function analyzeXml(xml) {
         attributes: 0,
         lines: 0,
         formatted: '',
+        outline: null,
     };
     if (!xml) return empty;
 
@@ -916,10 +1052,76 @@ function analyzeXml(xml) {
             attributes: elements.reduce((count, element) => count + element.attributes.length, 0),
             lines: formatted ? formatted.split('\n').length : 0,
             formatted,
+            outline: summarizeXmlNode(documentNode.documentElement),
         };
     } catch {
         return empty;
     }
+}
+
+function summarizeXmlNode(element) {
+    if (!element) return null;
+    const children = Array.from(element.children);
+    const childCounts = new Map();
+    for (const child of children) {
+        childCounts.set(child.tagName, (childCounts.get(child.tagName) || 0) + 1);
+    }
+    const sections = children.map(summarizeXmlNode);
+    return {
+        name: element.tagName,
+        attributes: element.attributes.length,
+        elements: sections.reduce((total, section) => total + section.elements, 1),
+        children: children.length,
+        sections,
+        attributeValues: Array.from(element.attributes, (attribute) => ({
+            name: attribute.name,
+            value: attribute.value,
+        })),
+        childCounts: Array.from(childCounts, ([name, count]) => ({ name, count })),
+    };
+}
+
+function renderXmlOutline(analysis) {
+    const metrics = document.getElementById('xml-outline-metrics');
+    const facts = document.getElementById('xml-outline-facts');
+    const sections = document.getElementById('xml-outline-sections');
+    if (!metrics || !facts || !sections) return;
+    if (!analysis?.valid || !analysis.outline) {
+        metrics.innerHTML = '';
+        facts.innerHTML = '';
+        sections.innerHTML = '<div class="xml-outline__empty">无法解析 XML 结构。</div>';
+        return;
+    }
+    const outline = analysis.outline;
+    metrics.innerHTML = [
+        ['根节点', outline.name],
+        ['文档节点', formatNumber(analysis.elements)],
+        ['属性', formatNumber(analysis.attributes)],
+        ['一级分块', formatNumber(outline.children)],
+    ].map(([label, value]) => '<div class="xml-outline-metric"><span>' + escapeHtml(label) +
+        '</span><strong>' + escapeHtml(value) + '</strong></div>').join('');
+    facts.innerHTML = outline.attributeValues?.length
+        ? '<span class="xml-outline-facts__label">根节点属性</span>' + outline.attributeValues.map((attribute) =>
+            '<span class="xml-outline-fact"><code>' + escapeHtml(attribute.name) +
+            '</code><span>' + escapeHtml(attribute.value) + '</span></span>').join('')
+        : '';
+    sections.innerHTML = outline.sections.length
+        ? outline.sections.map(renderXmlOutlineSection).join('')
+        : '<div class="xml-outline__empty">根节点没有子节点。</div>';
+}
+
+function renderXmlOutlineSection(section) {
+    const classes = 'xml-outline-section xml-outline-section--' +
+        String(section.name).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+    const children = section.childCounts?.length
+        ? section.childCounts.map((child) => '<span class="xml-outline-chip"><code>' +
+            escapeHtml(child.name) + '</code> × ' + formatNumber(child.count) + '</span>').join('')
+        : '<span class="xml-outline-muted">没有子节点</span>';
+    return '<article class="' + classes + '"><header><strong>' +
+        escapeHtml(formatXmlSectionName(section.name, { sections: [section] })) +
+        '</strong><span>' + formatNumber(section.elements) + ' 个节点 · ' +
+        formatNumber(section.attributes) + ' 个属性</span></header><div class="xml-outline-chips">' +
+        children + '</div></article>';
 }
 
 function formatXml(xml) {

@@ -50,7 +50,11 @@ impl VerifyStats {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    tracing_subscriber::fmt()
+        .with_ansi(true)
+        .with_ansi_sanitization(false)
+        .with_max_level(Level::INFO)
+        .init();
 
     let cli = Cli::parse();
     ConfigFile::init_global(Some(PathBuf::from(cli.config)));

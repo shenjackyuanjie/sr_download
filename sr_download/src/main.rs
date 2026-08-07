@@ -52,10 +52,16 @@ fn main() -> anyhow::Result<()> {
 
     if cli.debug {
         tracing_subscriber::fmt()
+            .with_ansi(true)
+            .with_ansi_sanitization(false)
             .with_max_level(Level::DEBUG)
             .init();
     } else {
-        tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+        tracing_subscriber::fmt()
+            .with_ansi(true)
+            .with_ansi_sanitization(false)
+            .with_max_level(Level::INFO)
+            .init();
     }
 
     let mode = if cli.serve {

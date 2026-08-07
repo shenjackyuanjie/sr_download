@@ -167,7 +167,10 @@ impl ConfigFile {
                 GLOBAL_CFG.get_or_init(|| conf);
             }
             Err(e) => {
-                let _ = tracing_subscriber::fmt::try_init();
+                let _ = tracing_subscriber::fmt()
+                    .with_ansi(true)
+                    .with_ansi_sanitization(false)
+                    .try_init();
                 event!(Level::ERROR, "{}", "Please Fix the config.toml file".red());
                 event!(Level::ERROR, "Error: {:?}", e);
                 if let Err(e) = Self::write_default_to_file(Path::new("config_template.toml")) {

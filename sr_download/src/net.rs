@@ -121,6 +121,25 @@ pub const REQUEST_UA: [&str; 4] = [
 ];
 pub const EMPTY_SHIP: &str = r#"<Ship version="1" liftedOff="0" touchingGround="0"><DisconnectedParts/><Parts><Part partType="pod-1" id="1" x="0.000000" y="0.750000" angle="0.000000" angleV="0.000000" editorAngle="0"><Pod throttle="0.000000" name=""><Staging currentStage="0"/></Pod></Part></Parts><Connections/></Ship>"#;
 
+/// The upstream service sometimes returns a cookie-check HTML page with a
+/// successful HTTP status instead of the requested XML document.
+const BAD_HTML_RESPONSE_MARKER: &str = "var isSupportredirect = true;";
+
+fn is_known_bad_html_response(body: &str) -> bool {
+    let body = body.trim_start();
+    body.starts_with("<html>") && body.contains(BAD_HTML_RESPONSE_MARKER)
+}
+
+fn log_rejected_response(id: SaveId, endpoint: &str, body: &str) {
+    if is_known_bad_html_response(body) {
+        event!(
+            Level::WARN,
+            "rejected known HTML redirect response for {endpoint} id {id}, body length {}",
+            body.len()
+        );
+    }
+}
+
 impl Downloader {
     pub fn new(timeout: Option<Duration>) -> Self {
         let ua = format!("sr_download/{}", env!("CARGO_PKG_VERSION"));
@@ -155,13 +174,16 @@ impl Downloader {
             if ship_try.status().is_success() {
                 event!(Level::DEBUG, "Download as ship {:?}", ship_try);
                 if let Ok(body) = ship_try.text().await {
-                    event!(Level::DEBUG, "get ship body {:?}", body);
+                    event!(Level::DEBUG, "get ship body length {}", body.len());
                     // 再判空
                     if !(body.is_empty() || body == "0") {
                         if body == EMPTY_SHIP {
                             event!(Level::INFO, "沟槽, 怎么又是空船 id: {id}");
                         }
-                        return Some(DownloadFile::Ship(body));
+                        if !is_known_bad_html_response(&body) {
+                            return Some(DownloadFile::Ship(body));
+                        }
+                        log_rejected_response(id, "ship", &body);
                     }
                 }
             }
@@ -174,7 +196,10 @@ impl Downloader {
                 if let Ok(body) = save_try.text().await {
                     // 再判空
                     if !(body.is_empty() || body == "0") {
-                        return Some(DownloadFile::Save(body));
+                        if !is_known_bad_html_response(&body) {
+                            return Some(DownloadFile::Save(body));
+                        }
+                        log_rejected_response(id, "save", &body);
                     }
                 }
             }
@@ -194,7 +219,10 @@ impl Downloader {
                         if body == EMPTY_SHIP {
                             event!(Level::INFO, "沟槽, 怎么又是空船 id: {id}");
                         }
-                        return Some(body);
+                        if !is_known_bad_html_response(&body) {
+                            return Some(body);
+                        }
+                        log_rejected_response(id, "ship", &body);
                     }
                 }
             }
@@ -211,7 +239,10 @@ impl Downloader {
             if try_res.status().is_success() {
                 if let Ok(body) = try_res.text().await {
                     if !(body.is_empty() || body == "0") {
-                        return Some(body);
+                        if !is_known_bad_html_response(&body) {
+                            return Some(body);
+                        }
+                        log_rejected_response(id, "save", &body);
                     }
                 }
             }
@@ -291,5 +322,33 @@ mod tests {
         let downloader = Downloader::default();
         let body = downloader.download_as_save(0).await;
         assert!(body.is_none());
+    }
+
+    #[test]
+    fn rejects_known_html_redirect_response() {
+        let body = r#"
+            <html>
+                <head></head>
+                <body>
+                    <script type="text/javascript">
+                        var isSupportredirect = true;
+                    </script>
+                </body>
+            </html>
+        "#;
+        assert!(is_known_bad_html_response(body));
+    }
+
+    #[test]
+    fn rejects_only_the_known_html_signature() {
+        assert!(!is_known_bad_html_response(
+            "<html><body>normal content</body></html>"
+        ));
+        assert!(!is_known_bad_html_response(
+            "<Ship><Parts/><Connections/></Ship>"
+        ));
+        assert!(!is_known_bad_html_response(
+            "prefix <html> var isSupportredirect = true;"
+        ));
     }
 }

@@ -1,8 +1,11 @@
 [db]
-url = "postgres://srdown:srdown@localhost:5432/srdown"
+url = "postgres://username:password@localhost:5432/srdown"
 schema = "public"
 max_connections = 10
 sqlx_logging = false
+acquire_timeout_secs = 10
+idle_timeout_secs = 300
+statement_timeout_secs = 30
 
 [sync]
 max_timeout = 1.0
@@ -18,6 +21,6 @@ worker_size = 10
 host_with_port = "0.0.0.0:10002"
 db_max_connect = 10
 enable = false
-resync_token = "Its a pretty looong token to keep you safe"
+resync_token = "change-me-before-enabling-server"
 # 10_000ms
 refresh_interval = 10_000

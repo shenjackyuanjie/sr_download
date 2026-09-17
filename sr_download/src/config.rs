@@ -4,12 +4,24 @@ use std::{
     sync::OnceLock,
 };
 
-use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use tracing::{Level, event};
 
 pub mod db_config {
     use serde::{Deserialize, Serialize};
+
+    fn default_acquire_timeout_secs() -> u64 {
+        10
+    }
+
+    fn default_idle_timeout_secs() -> u64 {
+        300
+    }
+
+    fn default_statement_timeout_secs() -> u64 {
+        30
+    }
+
     #[derive(Serialize, Deserialize, Debug, Clone)]
     #[serde(rename = "db")]
     pub struct DbConfig {
@@ -17,15 +29,27 @@ pub mod db_config {
         pub schema: String,
         pub max_connections: u32,
         pub sqlx_logging: bool,
+        /// 从池中取得连接的最长等待时间，单位为秒。
+        #[serde(default = "default_acquire_timeout_secs")]
+        pub acquire_timeout_secs: u64,
+        /// 空闲物理连接在池中保留的最长时间，单位为秒。
+        #[serde(default = "default_idle_timeout_secs")]
+        pub idle_timeout_secs: u64,
+        /// PostgreSQL 对每条连接执行语句的最长时间，单位为秒；0 表示数据库不设限。
+        #[serde(default = "default_statement_timeout_secs")]
+        pub statement_timeout_secs: u64,
     }
 
     impl Default for DbConfig {
         fn default() -> Self {
             Self {
-                url: "postgres://srdown:srdown@localhost:5432/srdown".to_string(),
+                url: "postgres://username:password@localhost:5432/srdown".to_string(),
                 schema: "public".to_string(),
                 max_connections: 10,
                 sqlx_logging: false,
+                acquire_timeout_secs: default_acquire_timeout_secs(),
+                idle_timeout_secs: default_idle_timeout_secs(),
+                statement_timeout_secs: default_statement_timeout_secs(),
             }
         }
     }
@@ -85,7 +109,7 @@ pub mod serve_config {
         false
     }
 
-    const LONG_TOKEN: &str = "Its a pretty looong token to keep you safe";
+    const LONG_TOKEN: &str = "change-me-before-enabling-server";
 
     pub fn loong_token() -> String {
         LONG_TOKEN.to_string()
@@ -159,34 +183,18 @@ impl ConfigFile {
         std::time::Duration::from_secs_f32(self.sync.max_timeout)
     }
 
-    pub fn init_global(path: Option<PathBuf>) {
-        match Self::read_from_file(path.unwrap_or(PathBuf::from("config.toml"))) {
-            Ok(conf) => {
-                let resync_token = conf.serve.resync_token.clone();
-                crate::web_part::RESYNC_TOKEN.get_or_init(|| resync_token);
-                GLOBAL_CFG.get_or_init(|| conf);
-            }
-            Err(e) => {
-                let _ = tracing_subscriber::fmt()
-                    .with_ansi(true)
-                    .with_ansi_sanitization(false)
-                    .try_init();
-                event!(Level::ERROR, "{}", "Please Fix the config.toml file".red());
-                event!(Level::ERROR, "Error: {:?}", e);
-                if let Err(e) = Self::write_default_to_file(Path::new("config_template.toml")) {
-                    event!(Level::ERROR, "Error while writing file: {:?}", e);
-                    event!(
-                        Level::ERROR,
-                        "template file like this: {}",
-                        toml::to_string(&Self::default()).expect("wtf")
-                    );
-                    panic!("faild to write template cfg");
-                } else {
-                    GLOBAL_CFG.get_or_init(Self::default);
-                    crate::web_part::RESYNC_TOKEN.get_or_init(serve_config::loong_token);
-                }
-            }
-        }
+    pub fn init_global(path: Option<PathBuf>) -> anyhow::Result<()> {
+        let path = path.unwrap_or(PathBuf::from("config.toml"));
+        let conf = Self::read_from_file(path.clone()).map_err(|e| {
+            event!(Level::ERROR, path = %path.display(), error = ?e, "无法读取配置文件");
+            e
+        })?;
+        let resync_token = conf.serve.resync_token.clone();
+        crate::web_part::RESYNC_TOKEN.get_or_init(|| resync_token);
+        GLOBAL_CFG
+            .set(conf)
+            .map_err(|_| anyhow::anyhow!("Global configuration is already initialized"))?;
+        Ok(())
     }
 
     pub fn get_global() -> &'static Self {

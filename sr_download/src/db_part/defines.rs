@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Row};
+use sqlx::{Executor, Postgres};
 
 pub mod db_names {
     /// 主数据表
@@ -27,7 +27,8 @@ pub mod db_names {
 ///    - `full_data` 视图
 ///    - `ships` 表
 /// 3. 清理 SeaORM 遗留表并重建干净数据表
-pub const CURRENT_DB_VERSION: i32 = 3;
+/// 4. 将运行时 XML 维护改为分页执行，并按版本刷新 full_data 视图
+pub const CURRENT_DB_VERSION: i32 = 4;
 
 pub const TEXT_DATA_MAX_LEN: usize = 1024;
 pub type SaveId = u32;
@@ -95,6 +96,10 @@ INSERT INTO db_version (version, updated_at)
 VALUES ($1, now())
 ON CONFLICT (version) DO UPDATE SET updated_at = EXCLUDED.updated_at
 "#;
+pub const FETCH_DB_VERSION_SQL: &str = r#"
+SELECT MAX(version)
+FROM db_version
+"#;
 pub const CREATE_MAIN_SAVE_TYPE_SAVE_ID_INDEX_SQL: &str = r#"
 CREATE INDEX IF NOT EXISTS maindata_savetype_saveid_idx
 ON main_data (save_type, save_id, len, xml_tested)
@@ -112,7 +117,14 @@ pub fn quote_ident(input: &str) -> String {
     format!("\"{}\"", input.replace('"', "\"\""))
 }
 
-pub async fn check_table_exists(db: &PgPool, table_name: &str, schema: &str) -> bool {
+pub async fn check_table_exists<'e, E>(
+    executor: E,
+    table_name: &str,
+    schema: &str,
+) -> anyhow::Result<bool>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS (
             SELECT 1
@@ -122,12 +134,19 @@ pub async fn check_table_exists(db: &PgPool, table_name: &str, schema: &str) -> 
     )
     .bind(table_name)
     .bind(schema)
-    .fetch_one(db)
+    .fetch_one(executor)
     .await
-    .unwrap_or(false)
+    .map_err(Into::into)
 }
 
-pub async fn check_type_exists(db: &PgPool, type_name: &str, schema: &str) -> bool {
+pub async fn check_type_exists<'e, E>(
+    executor: E,
+    type_name: &str,
+    schema: &str,
+) -> anyhow::Result<bool>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS (
             SELECT 1
@@ -138,12 +157,19 @@ pub async fn check_type_exists(db: &PgPool, type_name: &str, schema: &str) -> bo
     )
     .bind(type_name)
     .bind(schema)
-    .fetch_one(db)
+    .fetch_one(executor)
     .await
-    .unwrap_or(false)
+    .map_err(Into::into)
 }
 
-pub async fn check_index_exists(db: &PgPool, index_name: &str, schema: &str) -> bool {
+pub async fn check_index_exists<'e, E>(
+    executor: E,
+    index_name: &str,
+    schema: &str,
+) -> anyhow::Result<bool>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS (
             SELECT 1
@@ -153,21 +179,39 @@ pub async fn check_index_exists(db: &PgPool, index_name: &str, schema: &str) -> 
     )
     .bind(index_name)
     .bind(schema)
-    .fetch_one(db)
+    .fetch_one(executor)
     .await
-    .unwrap_or(false)
+    .map_err(Into::into)
 }
 
-pub async fn fetch_db_version(db: &PgPool) -> Option<i32> {
-    let row = sqlx::query(
-        "SELECT version
-         FROM db_version
-         ORDER BY updated_at DESC, version DESC
-         LIMIT 1",
+pub async fn check_view_exists<'e, E>(
+    executor: E,
+    view_name: &str,
+    schema: &str,
+) -> anyhow::Result<bool>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS (
+            SELECT 1
+            FROM pg_views
+            WHERE viewname = $1 AND schemaname = $2
+        )",
     )
-    .fetch_optional(db)
+    .bind(view_name)
+    .bind(schema)
+    .fetch_one(executor)
     .await
-    .ok()??;
+    .map_err(Into::into)
+}
 
-    row.try_get("version").ok()
+pub async fn fetch_db_version<'e, E>(executor: E) -> anyhow::Result<Option<i32>>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    sqlx::query_scalar::<_, Option<i32>>(FETCH_DB_VERSION_SQL)
+        .fetch_one(executor)
+        .await
+        .map_err(Into::into)
 }

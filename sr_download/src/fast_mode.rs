@@ -36,7 +36,7 @@ async fn big_worker(db: PgPool, client: Downloader, work_range: Range<SaveId>) {
                     )
                     .green()
                 );
-                let save_type = (&file).into();
+                let save_type: SaveType = (&file).into();
                 db_part::save_data_to_db(
                     work_id,
                     save_type,
@@ -46,20 +46,14 @@ async fn big_worker(db: PgPool, client: Downloader, work_range: Range<SaveId>) {
                 )
             }
             None => {
-                if exist_len.is_some() {
-                    event!(
-                        Level::INFO,
-                        "{}",
-                        format!("Skip save {work_id} with no data").cyan()
-                    );
-                    continue;
-                }
+                // 网络失败与上游确实不存在在此处不可区分，不能将其当作空数据写回。
                 event!(
-                    Level::INFO,
-                    "{}",
-                    format!("Download {work_id} with no data").yellow()
+                    Level::WARN,
+                    work_id,
+                    existing_data = exist_len.is_some(),
+                    "Download returned no data; leaving the database unchanged"
                 );
-                db_part::save_data_to_db(work_id, SaveType::None, "".to_string(), None, &db)
+                continue;
             }
         }
         .await
@@ -77,7 +71,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let conf = config::ConfigFile::get_global();
 
     let db_connect = db_part::connect(conf).await?;
-    db_part::full_update(&db_connect, conf).await;
+    db_part::initialize_db(&db_connect, conf).await?;
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 

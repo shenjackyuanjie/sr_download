@@ -57,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
-    ConfigFile::init_global(Some(PathBuf::from(cli.config)));
+    ConfigFile::init_global(Some(PathBuf::from(cli.config)))?;
     let conf = ConfigFile::get_global();
     let db = connect_server(conf).await?;
 

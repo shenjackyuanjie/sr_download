@@ -14,7 +14,7 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
     let conf = config::ConfigFile::get_global();
 
     let db_connect = db_part::connect(conf).await?;
-    db_part::full_update(&db_connect, conf).await;
+    db_part::initialize_db(&db_connect, conf).await?;
     let mut db_max_id = db_part::search::max_id(&db_connect).await;
 
     let mut web_waiter = None;

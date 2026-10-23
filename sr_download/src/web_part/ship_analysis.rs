@@ -562,15 +562,19 @@ impl BoundsAccumulator {
         let half_width = entry.width / 2.0;
         let half_height = entry.height / 2.0;
         let (sin, cos) = part.angle.sin_cos();
-        for (x, y) in [
+        for (corner_index, (x, y)) in [
             (-half_width, -half_height),
             (half_width, -half_height),
             (half_width, half_height),
             (-half_width, half_height),
-        ] {
+        ]
+        .into_iter()
+        .enumerate()
+        {
             let rotated_x = x * cos - y * sin + part.x * 2.0;
             let rotated_y = x * sin + y * cos + part.y * 2.0;
-            if self.known_parts == 0 {
+            // 仅第一个顶点初始化，后续顶点（包括首个部件）都必须参与边界累积。
+            if self.known_parts == 0 && corner_index == 0 {
                 self.min_x = rotated_x;
                 self.max_x = rotated_x;
                 self.min_y = rotated_y;
@@ -600,7 +604,7 @@ impl BoundsAccumulator {
 
 #[cfg(test)]
 mod tests {
-    use super::analyze_ship;
+    use super::{BoundsAccumulator, analyze_ship, catalog};
     use crate::{net::EMPTY_SHIP, xml_part::parse::parse_ship_xml};
 
     #[test]
@@ -612,6 +616,65 @@ mod tests {
         assert_eq!(analysis.mass.scaled_units, 500.0);
         assert_eq!(analysis.inventory[0].part_type_id, "pod-1");
         assert_eq!(analysis.connections.total, 0);
+        let geometry = analysis.geometry.expect("已知部件应有几何边界");
+        assert!(geometry.width > 0.0);
+        assert!(geometry.height > 0.0);
+    }
+
+    #[test]
+    fn first_part_contributes_all_four_corners() {
+        let mut document = parse_ship_xml(EMPTY_SHIP).unwrap();
+        let part = &mut document.ship.parts[0];
+        part.angle = 0.0;
+        part.x = 3.0;
+        part.y = -4.0;
+        let entry = catalog().get(&part.part_type_id).unwrap();
+        let mut bounds = BoundsAccumulator::default();
+        bounds.add(part, entry);
+        let geometry = bounds.finish().unwrap();
+        assert!((geometry.min_x - (6.0 - entry.width / 2.0)).abs() < 1e-9);
+        assert!((geometry.max_x - (6.0 + entry.width / 2.0)).abs() < 1e-9);
+        assert!((geometry.min_y - (-8.0 - entry.height / 2.0)).abs() < 1e-9);
+        assert!((geometry.max_y - (-8.0 + entry.height / 2.0)).abs() < 1e-9);
+        assert!((geometry.width - entry.width).abs() < 1e-9);
+        assert!((geometry.height - entry.height).abs() < 1e-9);
+    }
+
+    #[test]
+    fn rotated_first_part_retains_nonzero_bounds() {
+        let mut document = parse_ship_xml(EMPTY_SHIP).unwrap();
+        let part = &mut document.ship.parts[0];
+        part.angle = std::f64::consts::FRAC_PI_2;
+        let entry = catalog().get(&part.part_type_id).unwrap();
+        let mut bounds = BoundsAccumulator::default();
+        bounds.add(part, entry);
+        let geometry = bounds.finish().unwrap();
+        assert!((geometry.width - entry.height).abs() < 1e-9);
+        assert!((geometry.height - entry.width).abs() < 1e-9);
+    }
+
+    #[test]
+    fn bounds_are_independent_of_part_order() {
+        let mut document = parse_ship_xml(EMPTY_SHIP).unwrap();
+        let part = &mut document.ship.parts[0];
+        part.angle = 0.0;
+        part.x = 0.0;
+        part.y = 0.0;
+        let entry = catalog().get(&part.part_type_id).unwrap();
+        let mut forward = BoundsAccumulator::default();
+        forward.add(part, entry);
+        part.x = 10.0;
+        forward.add(part, entry);
+        let mut reverse = BoundsAccumulator::default();
+        reverse.add(part, entry);
+        part.x = 0.0;
+        reverse.add(part, entry);
+        let forward = forward.finish().unwrap();
+        let reverse = reverse.finish().unwrap();
+        assert_eq!(forward.min_x, reverse.min_x);
+        assert_eq!(forward.max_x, reverse.max_x);
+        assert_eq!(forward.min_y, reverse.min_y);
+        assert_eq!(forward.max_y, reverse.max_y);
     }
 
     #[test]

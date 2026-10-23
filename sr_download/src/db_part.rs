@@ -214,12 +214,13 @@ impl DbData {
 
     /// 直接从 full_data 里选即可
     pub async fn from_db(save_id: SaveId, db: &PgPool) -> Option<Self> {
+        let db_save_id = i32::try_from(save_id).ok()?;
         sqlx::query_as::<_, FullDataRow>(
             "SELECT data, save_id, save_type, len, blake_hash, xml_tested
              FROM full_data
              WHERE save_id = $1",
         )
-        .bind(save_id as i32)
+        .bind(db_save_id)
         .fetch_optional(db)
         .await
         .ok()?
@@ -258,13 +259,14 @@ mod xml_status_tests {
 }
 
 pub async fn check_data_len(db: &PgPool, save_id: SaveId) -> Option<i64> {
+    let db_save_id = i32::try_from(save_id).ok()?;
     sqlx::query_scalar::<_, i64>(
         "SELECT len
          FROM main_data
          WHERE save_id = $1
          LIMIT 1",
     )
-    .bind(save_id as i32)
+    .bind(db_save_id)
     .fetch_optional(db)
     .await
     .ok()
@@ -324,6 +326,9 @@ where
     D: Into<String>,
     T: Into<SaveType>,
 {
+    // PostgreSQL integer 只支持 i32；在开启事务前拒绝越界 ID，避免写入回绕后的负数行。
+    let db_save_id = i32::try_from(save_id)
+        .map_err(|_| anyhow::anyhow!("save_id exceeds PostgreSQL integer range: {save_id}"))?;
     let cover_strategy = cover_strategy.unwrap_or_default();
     let time = chrono::Utc::now();
     let save_type: SaveType = save_type.into();
@@ -347,7 +352,7 @@ where
          FROM main_data
          WHERE save_id = $1",
     )
-    .bind(save_id as i32)
+    .bind(db_save_id)
     .fetch_optional(&mut *tx)
     .await?;
 
@@ -371,7 +376,7 @@ where
                  xml_tested = EXCLUDED.xml_tested,
                  time = EXCLUDED.time",
         )
-        .bind(save_id as i32)
+        .bind(db_save_id)
         .bind(save_type)
         .bind(&hash)
         .bind(data_len)
@@ -388,7 +393,7 @@ where
              SET len = EXCLUDED.len,
                  text = EXCLUDED.text",
         )
-        .bind(save_id as i32)
+        .bind(db_save_id)
         .bind(data_len)
         .bind(data)
         .execute(&mut *tx)
@@ -406,7 +411,7 @@ where
                  xml_tested = EXCLUDED.xml_tested,
                  time = EXCLUDED.time",
         )
-        .bind(save_id as i32)
+        .bind(db_save_id)
         .bind(save_type)
         .bind(hash)
         .bind(data_len)
@@ -417,7 +422,7 @@ where
         .await?;
         // 从长数据切回短数据时只删除已不适用的从表行，保留 main_data 主键及其外键语义。
         sqlx::query("DELETE FROM long_data WHERE save_id = $1")
-            .bind(save_id as i32)
+            .bind(db_save_id)
             .execute(&mut *tx)
             .await?;
     }
@@ -471,5 +476,26 @@ mod save_strategy_tests {
             select_save_action(Some(OLD_HASH), OLD_HASH, CoverStrategy::CoverIfDifferent).unwrap(),
             SaveAction::Skip
         );
+    }
+}
+
+#[cfg(test)]
+mod id_range_tests {
+    use super::{DbData, SaveId, SaveType, check_data_len, save_data_to_db};
+    use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+
+    #[tokio::test]
+    async fn rejects_out_of_range_ids_without_using_a_database() {
+        // 先关闭 lazy pool，测试即使退化也不会尝试建立任何网络连接。
+        let db = PgPoolOptions::new().connect_lazy_with(PgConnectOptions::new());
+        db.close().await;
+        for id in [i32::MAX as SaveId + 1, SaveId::MAX] {
+            assert!(DbData::from_db(id, &db).await.is_none());
+            assert_eq!(check_data_len(&db, id).await, None);
+            let error = save_data_to_db(id, SaveType::Unknown, "data", None, &db)
+                .await
+                .expect_err("越界 ID 应在访问数据库前被拒绝");
+            assert!(error.to_string().contains("integer range"));
+        }
     }
 }

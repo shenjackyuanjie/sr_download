@@ -41,7 +41,7 @@ async fn ensure_schema(db: &PgPool, conf: &ConfigFile) -> anyhow::Result<()> {
         .execute(&mut *tx)
         .await
         .context("无法取得数据库结构更新锁")?;
-    ensure_schema_locked(&mut *tx, conf).await?;
+    ensure_schema_locked(&mut tx, conf).await?;
     tx.commit().await.context("无法提交数据库结构更新事务")?;
     Ok(())
 }

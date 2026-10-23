@@ -19,7 +19,12 @@ struct Cli {
     #[arg(short = 'c', long = "config", default_value = "./config.toml")]
     config: String,
 
-    #[arg(short = 'b', long = "batch-size", default_value_t = 10_000)]
+    #[arg(
+        short = 'b',
+        long = "batch-size",
+        default_value_t = 10_000,
+        value_parser = clap::value_parser!(i64).range(1..)
+    )]
     batch_size: i64,
 }
 
@@ -73,7 +78,7 @@ async fn scan_db(db: &PgPool, batch_size: i64) -> anyhow::Result<VerifyStats> {
     let total_rows = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM full_data")
         .fetch_one(db)
         .await? as u64;
-    let mut last_save_id = 0i32;
+    let mut last_save_id: Option<i32> = None;
     let mut batch_index = 0u64;
     let started_at = Instant::now();
 
@@ -81,7 +86,7 @@ async fn scan_db(db: &PgPool, batch_size: i64) -> anyhow::Result<VerifyStats> {
         let rows = sqlx::query(
             "SELECT save_id, data
              FROM full_data
-             WHERE save_id > $1
+             WHERE ($1::integer IS NULL OR save_id > $1)
              ORDER BY save_id
              LIMIT $2",
         )
@@ -94,12 +99,11 @@ async fn scan_db(db: &PgPool, batch_size: i64) -> anyhow::Result<VerifyStats> {
             break;
         }
 
-        let batch_start_id = rows
-            .first()
-            .and_then(|row| row.try_get::<i32, _>("save_id").ok())
-            .unwrap_or(last_save_id);
+        let batch_start_id = rows[0].try_get::<i32, _>("save_id")?;
+        let mut batch_end_id = batch_start_id;
         for row in rows {
-            last_save_id = row.try_get::<i32, _>("save_id")?;
+            batch_end_id = row.try_get::<i32, _>("save_id")?;
+            last_save_id = Some(batch_end_id);
             let data = row.try_get::<Option<String>, _>("data")?;
             match data {
                 Some(text) if !text.is_empty() => {
@@ -116,7 +120,7 @@ async fn scan_db(db: &PgPool, batch_size: i64) -> anyhow::Result<VerifyStats> {
         render_progress(
             batch_index,
             batch_start_id,
-            last_save_id,
+            batch_end_id,
             total_rows,
             &stats,
             started_at.elapsed(),
@@ -318,4 +322,77 @@ fn display_width(text: &str) -> usize {
 
 fn char_width(c: char) -> usize {
     if c.is_ascii() { 1 } else { 2 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cli_requires_a_positive_batch_size() {
+        assert_eq!(
+            Cli::try_parse_from(["verify_ship_stats"])
+                .unwrap()
+                .batch_size,
+            10_000
+        );
+        for size in ["1", "10000", "9223372036854775807"] {
+            let argument = format!("--batch-size={size}");
+            assert!(Cli::try_parse_from(["verify_ship_stats", &argument]).is_ok());
+        }
+        for size in ["0", "-1", "-9223372036854775808", "invalid"] {
+            let argument = format!("--batch-size={size}");
+            assert!(Cli::try_parse_from(["verify_ship_stats", &argument]).is_err());
+        }
+    }
+
+    #[test]
+    fn stats_partition_missing_data_and_all_verification_states() {
+        let mut stats = VerifyStats::default();
+        stats.record_missing();
+        stats.record_missing();
+        for state in [
+            ShipVerifyState::NotXml,
+            ShipVerifyState::NotShip,
+            ShipVerifyState::FakeShip,
+            ShipVerifyState::BrokenShip,
+            ShipVerifyState::VerifiedShip,
+            ShipVerifyState::VerifiedShip,
+        ] {
+            stats.record_state(state);
+        }
+        assert_eq!(stats.total_rows, 8);
+        assert_eq!(stats.missing_data, 2);
+        assert_eq!(stats.rows_with_data, 6);
+        assert_eq!(stats.valid_xml, 5);
+        assert_eq!(stats.states.values().sum::<u64>(), stats.rows_with_data);
+        assert_eq!(stats.rows_with_data + stats.missing_data, stats.total_rows);
+        assert_eq!(
+            stats.valid_xml + count_for(&stats, ShipVerifyState::NotXml),
+            stats.rows_with_data
+        );
+        assert_eq!(count_for(&stats, ShipVerifyState::VerifiedShip), 2);
+        assert_eq!(
+            count_for(&VerifyStats::default(), ShipVerifyState::NotXml),
+            0
+        );
+    }
+
+    #[test]
+    fn summary_formatting_handles_boundaries() {
+        assert_eq!(format_count(0.0), "0");
+        assert_eq!(format_count(999.0), "999");
+        assert_eq!(format_count(1_000.0), "1.00K");
+        assert_eq!(format_count(1_000_000.0), "1.00M");
+        assert_eq!(format_count(1_000_000_000.0), "1.00B");
+        assert_eq!(format_duration(std::time::Duration::ZERO), "00:00");
+        assert_eq!(format_duration(std::time::Duration::from_secs(61)), "01:01");
+        assert_eq!(
+            format_duration(std::time::Duration::from_secs(3661)),
+            "01:01:01"
+        );
+        assert_eq!(display_width("合法XML"), 7);
+        assert_eq!(pad_right("状态", 6), "状态  ");
+        assert_eq!(pad_left("状态", 6), "  状态");
+    }
 }

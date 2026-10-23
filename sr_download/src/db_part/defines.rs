@@ -215,3 +215,23 @@ where
         .await
         .map_err(Into::into)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::quote_ident;
+
+    #[test]
+    fn quotes_schema_as_one_identifier() {
+        assert_eq!(quote_ident("public"), r#""public""#);
+        assert_eq!(quote_ident("schema.with.dots"), r#""schema.with.dots""#);
+        assert_eq!(quote_ident("中文 schema"), r#""中文 schema""#);
+    }
+
+    #[test]
+    fn escapes_quotes_inside_identifiers() {
+        assert_eq!(
+            quote_ident(r#"a"; DROP SCHEMA public; --"#),
+            r#""a""; DROP SCHEMA public; --""#
+        );
+    }
+}

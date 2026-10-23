@@ -179,6 +179,33 @@ impl From<MarketRow> for MarketRecord {
     }
 }
 
+fn market_query(
+    limit: u16,
+    save_type: Option<SaveType>,
+    before: Option<SaveId>,
+) -> QueryBuilder<Postgres> {
+    let mut query = QueryBuilder::<Postgres>::new(
+        "SELECT save_id, save_type, len, blake_hash, xml_tested, time
+         FROM main_data
+         WHERE len > 0 AND save_id >= 0",
+    );
+    match save_type {
+        Some(save_type) => query.push(" AND save_type = ").push_bind(save_type),
+        None => query.push(" AND save_type != ").push_bind(SaveType::None),
+    };
+    if let Some(before) = before {
+        // 游标是排他的上界，可大于数据库最大 ID；用 bigint 保持完整的 u32 范围。
+        query
+            .push(" AND save_id < ")
+            .push_bind(i64::from(before))
+            .push("::bigint");
+    }
+    query
+        .push(" ORDER BY save_id DESC LIMIT ")
+        .push_bind(i64::from(limit) + 1);
+    query
+}
+
 impl MarketPage {
     pub async fn from_db(
         db: &PgPool,
@@ -186,34 +213,23 @@ impl MarketPage {
         save_type: Option<SaveType>,
         before: Option<SaveId>,
     ) -> Result<Self, sqlx::Error> {
-        let limit = i64::from(limit);
-        let mut query = QueryBuilder::<Postgres>::new(
-            "SELECT save_id, save_type, len, blake_hash, xml_tested, time
-             FROM main_data
-             WHERE len > 0",
-        );
-        match save_type {
-            Some(save_type) => query.push(" AND save_type = ").push_bind(save_type),
-            None => query.push(" AND save_type != ").push_bind(SaveType::None),
-        };
-        if let Some(before) = before {
-            query.push(" AND save_id < ").push_bind(before as i32);
-        }
-        query
-            .push(" ORDER BY save_id DESC LIMIT ")
-            .push_bind(limit + 1);
+        let limit = limit.clamp(1, 100);
+        let mut query = market_query(limit, save_type, before);
+        let rows = query.build_query_as::<MarketRow>().fetch_all(db).await?;
+        Ok(Self::from_rows(rows, usize::from(limit)))
+    }
 
-        let mut rows = query.build_query_as::<MarketRow>().fetch_all(db).await?;
-        let has_more = rows.len() > limit as usize;
-        rows.truncate(limit as usize);
+    fn from_rows(mut rows: Vec<MarketRow>, limit: usize) -> Self {
+        let has_more = rows.len() > limit;
+        rows.truncate(limit);
         let next_before = has_more
             .then(|| rows.last().map(|row| row.save_id as SaveId))
             .flatten();
-        Ok(Self {
+        Self {
             records: rows.into_iter().map(Into::into).collect(),
             has_more,
             next_before,
-        })
+        }
     }
 }
 
@@ -222,4 +238,78 @@ pub struct RecordDetail {
     pub info: LastData,
     pub xml_status: String,
     pub raw_data: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MarketPage, MarketRow, SaveType, market_query};
+    use chrono::DateTime;
+
+    fn row(save_id: i32) -> MarketRow {
+        MarketRow {
+            save_id,
+            save_type: SaveType::Ship,
+            len: 1,
+            blake_hash: "hash".to_string(),
+            xml_tested: Some(true),
+            time: DateTime::from_timestamp(0, 0).unwrap(),
+        }
+    }
+
+    #[test]
+    fn market_query_uses_exclusive_bigint_cursor_and_descending_ids() {
+        let query = market_query(2, None, Some(u32::MAX));
+        assert!(query.sql().as_str().contains("save_id >= 0"));
+        assert!(query.sql().as_str().contains("save_type != $1"));
+        assert!(query.sql().as_str().contains("save_id < $2::bigint"));
+        assert!(
+            query
+                .sql()
+                .as_str()
+                .ends_with("ORDER BY save_id DESC LIMIT $3")
+        );
+    }
+
+    #[test]
+    fn market_query_binds_the_type_filter_without_a_cursor() {
+        let query = market_query(48, Some(SaveType::Save), None);
+        assert!(query.sql().as_str().contains("save_type = $1"));
+        assert!(!query.sql().as_str().contains("save_id <"));
+        assert!(
+            query
+                .sql()
+                .as_str()
+                .ends_with("ORDER BY save_id DESC LIMIT $2")
+        );
+    }
+
+    #[test]
+    fn next_page_cursor_uses_the_last_returned_row_not_the_lookahead_row() {
+        let page = MarketPage::from_rows(vec![row(9), row(8), row(7)], 2);
+        assert_eq!(
+            page.records
+                .iter()
+                .map(|record| record.save_id)
+                .collect::<Vec<_>>(),
+            vec![9, 8]
+        );
+        assert!(page.has_more);
+        assert_eq!(page.next_before, Some(8));
+    }
+
+    #[test]
+    fn last_page_has_no_continuation_even_when_it_fills_the_limit() {
+        let page = MarketPage::from_rows(vec![row(9), row(8)], 2);
+        assert_eq!(page.records.len(), 2);
+        assert!(!page.has_more);
+        assert_eq!(page.next_before, None);
+    }
+
+    #[test]
+    fn empty_page_has_no_continuation() {
+        let page = MarketPage::from_rows(Vec::new(), 2);
+        assert!(page.records.is_empty());
+        assert!(!page.has_more);
+        assert_eq!(page.next_before, None);
+    }
 }

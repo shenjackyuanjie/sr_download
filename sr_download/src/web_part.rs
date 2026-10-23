@@ -42,21 +42,37 @@ pub fn api_request_counter() -> u64 {
     API_REQUEST_COUNTER.load(std::sync::atomic::Ordering::Relaxed)
 }
 
-pub fn service_uptime() -> std::time::Duration {
-    crate::START_TIME.get().unwrap().elapsed().unwrap()
+pub fn service_uptime() -> Duration {
+    elapsed_since(
+        crate::START_TIME.get().copied(),
+        std::time::SystemTime::now(),
+    )
+}
+
+fn elapsed_since(start: Option<std::time::SystemTime>, now: std::time::SystemTime) -> Duration {
+    start
+        .and_then(|start| now.duration_since(start).ok())
+        .unwrap_or_default()
 }
 
 pub const INFO_PAGE: &str = include_str!("../assets/info.html");
 pub static RESYNC_TOKEN: OnceLock<String> = OnceLock::new();
 
 pub async fn web_main() -> anyhow::Result<()> {
+    web_main_until_stopped(std::future::pending()).await
+}
+
+/// 停止接收新请求，等待在途请求结束，再关闭 Web 专用连接池。
+pub async fn web_main_until_stopped(
+    shutdown: impl std::future::Future<Output = ()> + Send + 'static,
+) -> anyhow::Result<()> {
     let conf = crate::config::ConfigFile::get_global();
 
     let listener = tokio::net::TcpListener::bind(conf.serve.host_with_port.clone()).await?;
     let db = db_part::connect_server(conf).await?;
     let _cache = cache::WebCache::new(
         &db,
-        Duration::from_micros(conf.serve.refresh_interval as u64),
+        Duration::from_millis(conf.serve.refresh_interval as u64),
     )
     .await;
     let app = Router::new()
@@ -98,13 +114,42 @@ pub async fn web_main() -> anyhow::Result<()> {
             "/",
             get(jump_to_dashboard_from_root).post(jump_to_dashboard_from_root),
         )
-        .with_state(db);
+        .with_state(db.clone());
 
     event!(
         Level::INFO,
         "Starting http server on http://{}",
         conf.serve.host_with_port
     );
-    axum::serve(listener, app).await?;
+    let result = axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown)
+        .await;
+    db.close().await;
+    result?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::elapsed_since;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn uptime_handles_an_uninitialized_start_time() {
+        assert_eq!(elapsed_since(None, SystemTime::UNIX_EPOCH), Duration::ZERO);
+    }
+
+    #[test]
+    fn uptime_handles_clock_rollback() {
+        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(10);
+        let start = now + Duration::from_secs(1);
+        assert_eq!(elapsed_since(Some(start), now), Duration::ZERO);
+    }
+
+    #[test]
+    fn uptime_reports_elapsed_time() {
+        let start = SystemTime::UNIX_EPOCH;
+        let now = start + Duration::from_secs(42);
+        assert_eq!(elapsed_since(Some(start), now), Duration::from_secs(42));
+    }
 }

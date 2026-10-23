@@ -1,4 +1,6 @@
-use reqwest::{Client, ClientBuilder};
+use anyhow::{Context, ensure};
+use quick_xml::{Reader, events::Event};
+use reqwest::{Client, ClientBuilder, StatusCode};
 use std::time::Duration;
 use tracing::{Level, event};
 
@@ -130,125 +132,159 @@ fn is_known_bad_html_response(body: &str) -> bool {
     body.starts_with("<html>") && body.contains(BAD_HTML_RESPONSE_MARKER)
 }
 
-fn log_rejected_response(id: SaveId, endpoint: &str, body: &str) {
+fn log_rejected_response(endpoint: &str, body: &str) {
     if is_known_bad_html_response(body) {
         event!(
             Level::WARN,
-            "rejected known HTML redirect response for {endpoint} id {id}, body length {}",
+            "rejected known HTML redirect response for {endpoint}, body length {}",
             body.len()
         );
     }
 }
 
+/// 单次响应上限，避免错误页面或异常响应无限占用内存。
+pub const MAX_DOWNLOAD_BYTES: usize = 32 * 1024 * 1024;
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+
 impl Downloader {
+    /// 兼容旧调用方；需要处理初始化错误时使用 [Self::try_new]。
     pub fn new(timeout: Option<Duration>) -> Self {
-        let ua = format!("sr_download/{}", env!("CARGO_PKG_VERSION"));
-        let mut client = ClientBuilder::new().user_agent(ua);
-        if let Some(timeout) = timeout {
-            client = client.timeout(timeout);
-        }
-        let client = client.build().unwrap();
-        Self { client }
+        Self::try_new(timeout).expect("无法创建 HTTP 下载客户端")
+    }
+
+    pub fn try_new(timeout: Option<Duration>) -> anyhow::Result<Self> {
+        let timeout = timeout.unwrap_or(DEFAULT_TIMEOUT);
+        ensure!(!timeout.is_zero(), "HTTP 超时必须大于 0");
+        ensure!(
+            std::time::Instant::now().checked_add(timeout).is_some(),
+            "HTTP 超时超出平台计时范围"
+        );
+        let client = ClientBuilder::new()
+            .user_agent(format!("sr_download/{}", env!("CARGO_PKG_VERSION")))
+            .timeout(timeout)
+            .connect_timeout(timeout.min(Duration::from_secs(10)))
+            .build()
+            .context("无法创建 HTTP 下载客户端")?;
+        Ok(Self { client })
     }
 
     pub fn fmt_ship_url(id: SaveId) -> String {
-        format!("http://jundroo.com/service/SimpleRockets/DownloadRocket?id={id}",)
+        format!("http://jundroo.com/service/SimpleRockets/DownloadRocket?id={id}")
     }
 
     pub fn fmt_save_url(id: SaveId) -> String {
-        format!("http://jundroo.com/service/SimpleRockets/DownloadSandBox?id={id}",)
+        format!("http://jundroo.com/service/SimpleRockets/DownloadSandBox?id={id}")
     }
 
-    /// 尝试用 ship 或者 save 的 API 下载文件
-    /// 如果两个都没下载到，返回 None
-    /// 如果下载到了，返回 Some(文件内容)
+    async fn fetch(&self, url: &str, root: &str) -> anyhow::Result<Option<String>> {
+        let response = self.client.get(url).send().await.context("下载请求失败")?;
+        if matches!(response.status(), StatusCode::NOT_FOUND | StatusCode::GONE) {
+            return Ok(None);
+        }
+        let response = response.error_for_status().context("上游返回错误状态")?;
+        let body = read_limited_body(response, MAX_DOWNLOAD_BYTES).await?;
+        if body.trim().is_empty() || body.trim() == "0" {
+            return Ok(None);
+        }
+        if is_known_bad_html_response(&body) {
+            log_rejected_response(root, &body);
+            anyhow::bail!("上游返回 HTML 跳转页而非 {root} XML");
+        }
+        crate::xml_part::verify::verify_xml(&body).context("上游响应不是完整 XML")?;
+        let mut reader = Reader::from_str(&body);
+        loop {
+            match reader.read_event().context("无法读取 XML 根元素")? {
+                Event::Start(element) | Event::Empty(element) => {
+                    ensure!(
+                        element.name().as_ref() == root.as_bytes(),
+                        "上游响应根元素不是 {root}"
+                    );
+                    break;
+                }
+                Event::Eof => anyhow::bail!("上游响应缺少 XML 根元素"),
+                _ => {}
+            }
+        }
+        Ok(Some(body))
+    }
+
+    /// 区分真实缺失与请求/响应错误；任一接口返回有效文档即可成功。
+    #[tracing::instrument(skip(self), level = "debug")]
+    pub async fn download_any(&self, id: SaveId) -> anyhow::Result<Option<DownloadFile>> {
+        self.download_any_from_urls(&Self::fmt_ship_url(id), &Self::fmt_save_url(id))
+            .await
+            .with_context(|| format!("下载 ID {id} 失败"))
+    }
+
+    async fn download_any_from_urls(
+        &self,
+        ship_url: &str,
+        save_url: &str,
+    ) -> anyhow::Result<Option<DownloadFile>> {
+        let ship_error = match self.fetch(ship_url, "Ship").await {
+            Ok(Some(body)) => return Ok(Some(DownloadFile::Ship(body))),
+            Ok(None) => None,
+            Err(error) => Some(error),
+        };
+        match self.fetch(save_url, "Runtime").await {
+            Ok(Some(body)) => Ok(Some(DownloadFile::Save(body))),
+            Ok(None) => match ship_error {
+                Some(error) => Err(error.context("Ship 接口失败，Save 接口没有数据")),
+                None => Ok(None),
+            },
+            Err(error) => Err(error.context("Save 接口下载失败")),
+        }
+    }
+
+    /// 保留原 Option API；需要区分失败原因时使用 [Self::download_any]。
     pub async fn try_download_as_any(&self, id: SaveId) -> Option<DownloadFile> {
-        let span = tracing::span!(Level::DEBUG, "try_download_as_any", id);
-        let _enter = span.enter();
-        // 先尝试用 ship 的 API 下载
-        let ship_url = Self::fmt_ship_url(id);
-        let ship_try = self.client.get(&ship_url).send().await;
-        event!(Level::DEBUG, "trying to Download as ship {:?}", ship_try);
-        if let Ok(ship_try) = ship_try {
-            event!(Level::DEBUG, "Download as ship {:?}", ship_try.status());
-            if ship_try.status().is_success() {
-                event!(Level::DEBUG, "Download as ship {:?}", ship_try);
-                if let Ok(body) = ship_try.text().await {
-                    event!(Level::DEBUG, "get ship body length {}", body.len());
-                    // 再判空
-                    if !(body.is_empty() || body == "0") {
-                        if body == EMPTY_SHIP {
-                            event!(Level::INFO, "沟槽, 怎么又是空船 id: {id}");
-                        }
-                        if !is_known_bad_html_response(&body) {
-                            return Some(DownloadFile::Ship(body));
-                        }
-                        log_rejected_response(id, "ship", &body);
-                    }
-                }
+        match self.download_any(id).await {
+            Ok(file) => file,
+            Err(error) => {
+                event!(Level::WARN, id, error = %error, "下载失败，保留数据库原数据");
+                None
             }
         }
-        // 否则尝试用 save 的 API 下载
-        let save_url = Self::fmt_save_url(id);
-        let save_try = self.client.get(&save_url).send().await;
-        if let Ok(save_try) = save_try {
-            if save_try.status().is_success() {
-                if let Ok(body) = save_try.text().await {
-                    // 再判空
-                    if !(body.is_empty() || body == "0") {
-                        if !is_known_bad_html_response(&body) {
-                            return Some(DownloadFile::Save(body));
-                        }
-                        log_rejected_response(id, "save", &body);
-                    }
-                }
-            }
-        }
-        None
     }
 
-    #[allow(unused)]
-    /// 尝试用 ship 的 API 下载文件
     pub async fn download_as_ship(&self, id: SaveId) -> Option<String> {
-        let url = Self::fmt_ship_url(id);
-        let try_res = self.client.get(&url).send().await;
-        if let Ok(try_res) = try_res {
-            if try_res.status().is_success() {
-                if let Ok(body) = try_res.text().await {
-                    if !(body.is_empty() || body == "0") {
-                        if body == EMPTY_SHIP {
-                            event!(Level::INFO, "沟槽, 怎么又是空船 id: {id}");
-                        }
-                        if !is_known_bad_html_response(&body) {
-                            return Some(body);
-                        }
-                        log_rejected_response(id, "ship", &body);
-                    }
-                }
-            }
-        }
-        None
+        self.fetch(&Self::fmt_ship_url(id), "Ship")
+            .await
+            .unwrap_or_else(|error| {
+                event!(Level::WARN, id, error = %error, "Ship 下载失败");
+                None
+            })
     }
 
-    #[allow(unused)]
-    /// 尝试用 save 的 API 下载文件
     pub async fn download_as_save(&self, id: SaveId) -> Option<String> {
-        let url = Self::fmt_save_url(id);
-        let try_res = self.client.get(&url).send().await;
-        if let Ok(try_res) = try_res {
-            if try_res.status().is_success() {
-                if let Ok(body) = try_res.text().await {
-                    if !(body.is_empty() || body == "0") {
-                        if !is_known_bad_html_response(&body) {
-                            return Some(body);
-                        }
-                        log_rejected_response(id, "save", &body);
-                    }
-                }
-            }
-        }
-        None
+        self.fetch(&Self::fmt_save_url(id), "Runtime")
+            .await
+            .unwrap_or_else(|error| {
+                event!(Level::WARN, id, error = %error, "Save 下载失败");
+                None
+            })
     }
+}
+
+async fn read_limited_body(
+    mut response: reqwest::Response,
+    limit: usize,
+) -> anyhow::Result<String> {
+    ensure!(
+        response
+            .content_length()
+            .is_none_or(|length| length <= limit as u64),
+        "上游响应超过 {limit} 字节限制"
+    );
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.context("读取上游响应失败")? {
+        ensure!(
+            bytes.len().saturating_add(chunk.len()) <= limit,
+            "上游响应超过 {limit} 字节限制"
+        );
+        bytes.extend_from_slice(&chunk);
+    }
+    String::from_utf8(bytes).context("上游响应不是 UTF-8")
 }
 
 impl Default for Downloader {
@@ -350,5 +386,185 @@ mod tests {
         assert!(!is_known_bad_html_response(
             "prefix <html> var isSupportredirect = true;"
         ));
+    }
+}
+
+// 与真实上游网络测试独立，测试错误与边界时只连接回环地址。
+#[cfg(test)]
+mod local_tests {
+    use super::*;
+    use axum::{Router, body::Body, response::Response, routing::get};
+    use tokio::task::JoinHandle;
+
+    struct MockServer {
+        base: String,
+        task: JoinHandle<()>,
+    }
+    impl Drop for MockServer {
+        fn drop(&mut self) {
+            self.task.abort();
+        }
+    }
+
+    impl MockServer {
+        async fn new(ship: (StatusCode, &'static str), save: (StatusCode, &'static str)) -> Self {
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let base = format!("http://{}", listener.local_addr().unwrap());
+            let app = Router::new()
+                .route("/ship", get(move || async move { ship }))
+                .route("/save", get(move || async move { save }))
+                .route(
+                    "/slow",
+                    get(|| async {
+                        tokio::time::sleep(Duration::from_millis(200)).await;
+                        "0"
+                    }),
+                )
+                .route(
+                    "/invalid-utf8",
+                    get(|| async { Response::new(Body::from(vec![0xff, 0xfe])) }),
+                );
+            let task = tokio::spawn(async move {
+                axum::serve(listener, app).await.unwrap();
+            });
+            Self { base, task }
+        }
+        fn url(&self, path: &str) -> String {
+            format!("{}{path}", self.base)
+        }
+        async fn download(&self, client: &Downloader) -> anyhow::Result<Option<DownloadFile>> {
+            client
+                .download_any_from_urls(&self.url("/ship"), &self.url("/save"))
+                .await
+        }
+    }
+
+    fn client(timeout: Duration) -> Downloader {
+        Downloader {
+            client: Client::builder()
+                .no_proxy()
+                .timeout(timeout)
+                .build()
+                .unwrap(),
+        }
+    }
+
+    #[tokio::test]
+    async fn local_download_returns_ship_and_falls_back_to_save() {
+        let client = client(Duration::from_secs(2));
+        let server = MockServer::new(
+            (StatusCode::OK, "<Ship><Parts/><Connections/></Ship>"),
+            (StatusCode::INTERNAL_SERVER_ERROR, "error"),
+        )
+        .await;
+        assert!(server.download(&client).await.unwrap().unwrap().is_ship());
+        let server =
+            MockServer::new((StatusCode::OK, " 0\n"), (StatusCode::OK, "<Runtime/>")).await;
+        assert!(server.download(&client).await.unwrap().unwrap().is_save());
+    }
+
+    #[tokio::test]
+    async fn local_missing_is_distinct_from_server_errors() {
+        let client = client(Duration::from_secs(2));
+        let server =
+            MockServer::new((StatusCode::NOT_FOUND, "missing"), (StatusCode::OK, "  \n")).await;
+        assert!(server.download(&client).await.unwrap().is_none());
+        for status in [
+            StatusCode::TOO_MANY_REQUESTS,
+            StatusCode::FORBIDDEN,
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ] {
+            let server = MockServer::new((status, "failure"), (StatusCode::GONE, "missing")).await;
+            assert!(server.download(&client).await.is_err(), "{status}");
+        }
+    }
+
+    #[tokio::test]
+    async fn local_error_response_can_fall_back_to_a_valid_save() {
+        let client = client(Duration::from_secs(2));
+        for body in [
+            "<html><body>maintenance</body></html>",
+            "<html>var isSupportredirect = true;</html>",
+            "<Runtime/>",
+            "<Ship>",
+        ] {
+            let server =
+                MockServer::new((StatusCode::OK, body), (StatusCode::OK, "<Runtime/>")).await;
+            assert!(
+                server.download(&client).await.unwrap().unwrap().is_save(),
+                "{body}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn local_html_and_wrong_root_are_not_missing_records() {
+        let client = client(Duration::from_secs(2));
+        for body in [
+            "<html><body>failure</body></html>",
+            "not XML",
+            "<Runtime/>",
+            "<Ship>",
+        ] {
+            let server = MockServer::new((StatusCode::OK, body), (StatusCode::OK, "0")).await;
+            assert!(server.download(&client).await.is_err(), "{body}");
+        }
+    }
+
+    #[tokio::test]
+    async fn local_timeout_is_reported_as_an_error() {
+        let client = client(Duration::from_millis(25));
+        let server = MockServer::new((StatusCode::OK, "0"), (StatusCode::OK, "0")).await;
+        assert!(client.fetch(&server.url("/slow"), "Ship").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn local_body_limits_and_invalid_encoding_are_rejected() {
+        let client = client(Duration::from_secs(2));
+        let server = MockServer::new((StatusCode::OK, "<Ship/>"), (StatusCode::OK, "0")).await;
+        let response = client.client.get(server.url("/ship")).send().await.unwrap();
+        assert!(read_limited_body(response, 3).await.is_err());
+        assert!(
+            client
+                .fetch(&server.url("/invalid-utf8"), "Ship")
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn chunked_body_is_limited_without_content_length() {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let task = tokio::spawn(async move {
+            let (socket, _) = listener.accept().await.unwrap();
+            let mut socket = BufReader::new(socket);
+            let mut line = String::new();
+            loop {
+                assert!(socket.read_line(&mut line).await.unwrap() > 0);
+                if line == "\r\n" {
+                    break;
+                }
+                line.clear();
+            }
+            socket.get_mut().write_all(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n4\r\n1234\r\n4\r\n5678\r\n0\r\n\r\n").await.unwrap();
+        });
+        let response = client(Duration::from_secs(2))
+            .client
+            .get(url)
+            .send()
+            .await
+            .unwrap();
+        assert!(response.content_length().is_none());
+        assert!(read_limited_body(response, 6).await.is_err());
+        task.await.unwrap();
+    }
+
+    #[test]
+    fn client_rejects_zero_timeout() {
+        assert!(Downloader::try_new(Some(Duration::ZERO)).is_err());
+        assert!(Downloader::try_new(Some(Duration::MAX)).is_err());
+        assert!(Downloader::try_new(None).is_ok());
     }
 }

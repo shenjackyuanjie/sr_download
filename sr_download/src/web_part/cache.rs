@@ -1,31 +1,22 @@
-use std::{sync::atomic::AtomicBool, time::Duration};
+//! 兼容保留的缓存入口；目前没有实际缓存内容，不启动无效刷新任务。
 
 use sqlx::PgPool;
-use tokio::sync::RwLock;
+use std::time::Duration;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CacheData {}
 
 impl CacheData {
     pub async fn new_from_db(_db: &PgPool) -> Self {
-        Self {}
+        Self::default()
     }
 }
 
-#[derive(Debug)]
-pub struct WebCache {
-    updating: AtomicBool,
-    refresh_interval: Duration,
-    cache: RwLock<CacheData>,
-}
+#[derive(Debug, Default)]
+pub struct WebCache {}
 
 impl WebCache {
-    pub async fn new(db: &PgPool, refresh_interval: Duration) -> Self {
-        let cache = CacheData::new_from_db(db).await;
-        Self {
-            updating: AtomicBool::new(false),
-            refresh_interval,
-            cache: RwLock::new(cache),
-        }
+    pub async fn new(_db: &PgPool, _refresh_interval: Duration) -> Self {
+        Self::default()
     }
 }

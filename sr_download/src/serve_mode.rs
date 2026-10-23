@@ -1,110 +1,106 @@
-use std::io::Write;
-
-use colored::Colorize;
+use anyhow::{Context, ensure};
+use sqlx::PgPool;
 use tokio::sync::oneshot::Receiver;
 use tracing::{Level, event};
 
 use crate::db_part::{CoverStrategy, SaveType};
-use crate::{Downloader, config, db_part, web_part};
+use crate::{Downloader, SaveId, config, db_part, web_part};
 
-pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
-    let span = tracing::span!(Level::INFO, "serve_mode");
-    let _enter = span.enter();
+fn next_id(current: SaveId) -> anyhow::Result<SaveId> {
+    let next = current.checked_add(1).context("下载 ID 已到达上限")?;
+    ensure!(next <= i32::MAX as u32, "下载 ID 超出数据库 integer 范围");
+    Ok(next)
+}
 
-    let conf = config::ConfigFile::get_global();
-
-    let db_connect = db_part::connect(conf).await?;
-    db_part::initialize_db(&db_connect, conf).await?;
-    let mut db_max_id = db_part::search::max_id(&db_connect).await;
-
-    let mut web_waiter = None;
-    if conf.serve.enable {
-        web_waiter = Some(tokio::spawn(web_part::web_main()));
-    }
-
-    event!(
-        Level::INFO,
-        "{}",
-        format!("数据库中最大的现有数据 id 为: {db_max_id} 将从这里开始下载",).green()
-    );
-
-    let serve_wait_time = conf.serve_duration();
-    let client = Downloader::new(None);
-
-    let mut waited = false;
-    // 开始等待的时间
-    let mut start_wait_time = tokio::time::Instant::now();
-
+async fn download_loop(db: &PgPool, conf: &config::ConfigFile) -> anyhow::Result<()> {
+    let client = Downloader::try_new(Some(conf.net_timeout()))?;
+    let mut current = db_part::search::max_id(db).await;
+    event!(Level::INFO, current, "从数据库最大 ID 继续下载");
     loop {
-        if stop_receiver.try_recv().is_ok() {
-            event!(Level::INFO, "{}", "结束下载!".yellow());
-            db_connect.close().await;
-            if conf.serve.enable {
-                if let Some(web_waiter) = web_waiter {
-                    web_waiter.abort();
-                }
-            }
-            return Ok(());
-        }
-
-        let work_id = db_max_id + 1;
-        if let Some(file) = client.try_download_as_any(work_id).await {
-            if waited {
-                println!();
-                waited = false;
-            }
-            let wait_time = start_wait_time.elapsed();
-            start_wait_time = tokio::time::Instant::now();
-            event!(
-                Level::INFO,
-                "{}",
-                format!(
-                    "下载到了新的 {}!(懒得做中文了) ID为: {} 长度: {}, 等了 {}",
-                    file.type_name(),
-                    work_id,
-                    file.len(),
-                    format!("{wait_time:?}").blue()
+        let id = next_id(current)?;
+        match client.download_any(id).await {
+            Ok(Some(file)) => {
+                let save_type: SaveType = (&file).into();
+                db_part::save_data_to_db(
+                    id,
+                    save_type,
+                    file.take_data(),
+                    Some(CoverStrategy::CoverIfDifferent),
+                    db,
                 )
-                .green()
-            );
-            let save_type: SaveType = (&file).into();
-            match db_part::save_data_to_db(
-                work_id,
-                save_type,
-                file.take_data(),
-                Some(CoverStrategy::CoverIfDifferent),
-                &db_connect,
-            )
-            .await
-            {
-                Ok(_) => {
-                    db_max_id = work_id;
-                    event!(
-                        Level::INFO,
-                        "{}",
-                        format!("保存好啦! (下一排的每一个 . 代表一个 {serve_wait_time:?})",)
-                            .green()
-                    );
-                }
-                Err(e) => {
-                    event!(Level::ERROR, "呜呜呜, 数据保存失败了: {:?}\n我不玩了!", e);
-                    return Err(e);
-                }
-            }
-            continue; // 保存好之后立即尝试下一次, 保证连续上传的时候的效率
-        }
-        tokio::select! {
-            _ = tokio::time::sleep(serve_wait_time) => {
-                print!(".");
-                waited = true;
-                let _ = std::io::stdout().flush();
+                .await
+                .with_context(|| format!("保存 ID {id} 失败"))?;
+                current = id;
+                event!(Level::INFO, id, "下载并保存成功");
+                // 连续上传时不等待，立即尝试下一条。
                 continue;
             }
-            _ = &mut stop_receiver => {
-                event!(Level::INFO, "{}", "结束下载!".yellow());
-                db_connect.close().await;
-                return Ok(());
+            Ok(None) => event!(Level::DEBUG, id, "等待新数据"),
+            Err(error) => {
+                event!(Level::WARN, id, error = %error, "下载暂时失败，等待后重试同一 ID")
             }
         }
+        tokio::time::sleep(conf.serve_duration()).await;
+    }
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
+    let conf = config::ConfigFile::get_global();
+    conf.validate()?;
+    let db = db_part::connect(conf).await?;
+    let result = async {
+        db_part::initialize_db(&db, conf).await?;
+        let (web_stop, web_stopped) = tokio::sync::oneshot::channel();
+        let mut web_task = conf.serve.enable.then(|| {
+            tokio::spawn(web_part::web_main_until_stopped(async move {
+                let _ = web_stopped.await;
+            }))
+        });
+        let mut web_finished = false;
+        let result = tokio::select! {
+            biased;
+            _ = &mut stop_receiver => {
+                event!(Level::INFO, "收到停止请求，结束下载");
+                Ok(())
+            }
+            result = async { web_task.as_mut().unwrap().await }, if web_task.is_some() => {
+                web_finished = true;
+                match result {
+                    Err(error) => Err(anyhow::Error::new(error).context("Web 工作任务异常退出")),
+                    Ok(Err(error)) => Err(error.context("Web 服务运行失败")),
+                    Ok(Ok(())) => Err(anyhow::anyhow!("Web 服务意外结束")),
+                }
+            }
+            result = download_loop(&db, conf) => result,
+        };
+        if !web_finished && let Some(mut task) = web_task {
+            let _ = web_stop.send(());
+            if tokio::time::timeout(std::time::Duration::from_secs(10), &mut task)
+                .await
+                .is_err()
+            {
+                event!(Level::WARN, "Web 优雅停止超过 10 秒，取消剩余请求");
+                task.abort();
+                let _ = task.await;
+            }
+        }
+        result
+    }
+    .await;
+    db.close().await;
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn next_id_stays_in_database_range() {
+        assert_eq!(next_id(0).unwrap(), 1);
+        assert_eq!(next_id(i32::MAX as u32 - 1).unwrap(), i32::MAX as u32);
+        assert!(next_id(i32::MAX as u32).is_err());
+        assert!(next_id(u32::MAX).is_err());
     }
 }

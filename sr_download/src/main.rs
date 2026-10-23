@@ -1,4 +1,4 @@
-use std::{path::PathBuf, time::SystemTime};
+use std::{num::NonZeroUsize, path::PathBuf, time::SystemTime};
 
 use clap::{ArgGroup, Parser};
 use colored::Colorize;
@@ -31,8 +31,8 @@ struct Cli {
     debug: bool,
 
     /// 运行线程数 (默认10)
-    #[arg(short = 't', long = "threads", default_value_t = 10)]
-    threads: usize,
+    #[arg(short = 't', long = "threads", default_value = "10")]
+    threads: NonZeroUsize,
 
     /// 配置文件路径 (默认 "./config.toml")
     #[arg(short = 'c', long = "config", default_value = "./config.toml")]
@@ -99,32 +99,32 @@ fn main() -> anyhow::Result<()> {
     config::ConfigFile::init_global(Some(PathBuf::from(cfg_path)))?;
 
     let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(cli.threads)
+        .worker_threads(cli.threads.get())
         .enable_all()
         .build()?;
     rt.block_on(async_main(mode))
 }
 
 async fn async_main(run_mode: RunMode) -> anyhow::Result<()> {
+    use anyhow::Context;
     let (stop_sender, stop_receiver) = tokio::sync::oneshot::channel::<()>();
-
-    let stop_waiter = tokio::spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Failed to listen for Ctrl+C event");
-        event!(Level::INFO, "{}", "Ctrl-C received".red());
-        let _ = stop_sender.send(());
-    });
-
-    let job_waiter = match run_mode {
-        RunMode::Serve => tokio::spawn(serve_mode::main(stop_receiver)),
-        RunMode::Fast => tokio::spawn(fast_mode::main(stop_receiver)),
-        RunMode::Maintenance => tokio::spawn(maintenance_main(stop_receiver)),
+    let run = async move {
+        match run_mode {
+            RunMode::Serve => serve_mode::main(stop_receiver).await,
+            RunMode::Fast => fast_mode::main(stop_receiver).await,
+            RunMode::Maintenance => maintenance_main(stop_receiver).await,
+        }
     };
-    job_waiter.await??;
-    stop_waiter.abort();
-    let _ = stop_waiter.await;
-    Ok(())
+    tokio::pin!(run);
+    tokio::select! {
+        result = &mut run => result,
+        signal = tokio::signal::ctrl_c() => {
+            signal.context("无法监听 Ctrl-C 信号")?;
+            event!(Level::INFO, "{}", "收到 Ctrl-C，正在停止".red());
+            let _ = stop_sender.send(());
+            run.await
+        }
+    }
 }
 
 async fn maintenance_main(
@@ -142,5 +142,24 @@ async fn maintenance_main(
             event!(Level::INFO, "维护任务已按 Ctrl-C 请求取消");
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cli_requires_exactly_one_mode() {
+        assert!(Cli::try_parse_from(["sr_download"]).is_err());
+        assert!(Cli::try_parse_from(["sr_download", "--serve", "--fast"]).is_err());
+        assert!(Cli::try_parse_from(["sr_download", "--maintenance"]).is_ok());
+    }
+
+    #[test]
+    fn cli_rejects_zero_threads() {
+        assert!(Cli::try_parse_from(["sr_download", "--fast", "--threads", "0"]).is_err());
+        let cli = Cli::try_parse_from(["sr_download", "--fast", "--threads", "2"]).unwrap();
+        assert_eq!(cli.threads.get(), 2);
     }
 }

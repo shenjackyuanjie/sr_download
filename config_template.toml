@@ -8,10 +8,13 @@ idle_timeout_secs = 300
 statement_timeout_secs = 30
 
 [sync]
+# 每次 HTTP 请求的总超时（秒，有限正数）；船只/存档接口分别计时
 max_timeout = 1.0
+# 服务轮询的等待时间（秒，有限正数）
 serve_wait_time = 10.0
 
 [sync.fast]
+# 同步区间为 [start_id, end_id)，worker_count / worker_size 必须大于 0
 start_id = 76859
 end_id = 1321698
 worker_count = 10
@@ -22,5 +25,5 @@ host_with_port = "0.0.0.0:10002"
 db_max_connect = 10
 enable = false
 resync_token = "change-me-before-enabling-server"
-# 10_000ms
+# 毫秒；启用服务时必须大于 0
 refresh_interval = 10_000

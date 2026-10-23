@@ -1,6 +1,14 @@
+//! XML 解码、首根分派与文件读取入口。
+//!
+//! typed 入口直接按既有 quick_xml Serde schema 解码，不强制根名，
+//! 也不在解码前添加全篇 XML 门禁。`parse_any_xml` 只用首个 Start/Empty
+//! 事件选择文档类型；后续内容仍由同一个 Serde 解码器处理。
+//! `raw::Raw*::from_str` 只向这里转发，实际解码不再回调 raw 入口。
+
 use quick_xml::{Reader, events::Event};
 
-use crate::xml_part::{
+use super::{
+    codec,
     error::{XmlError, XmlResult},
     model::{SaveDocument, ShipDocument, XmlDocument},
     raw::{RawSaveDocument, RawShipDocument},
@@ -22,11 +30,11 @@ fn detect_root(data: &str) -> XmlResult<String> {
 }
 
 pub fn parse_raw_ship_xml(data: &str) -> XmlResult<RawShipDocument> {
-    RawShipDocument::from_str(data)
+    codec::decode(data)
 }
 
 pub fn parse_raw_save_xml(data: &str) -> XmlResult<RawSaveDocument> {
-    RawSaveDocument::from_str(data)
+    codec::decode(data)
 }
 
 pub fn parse_ship_xml(data: &str) -> XmlResult<ShipDocument> {

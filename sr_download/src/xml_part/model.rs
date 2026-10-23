@@ -1,3 +1,9 @@
+//! 面向业务处理的 XML 值模型，不承担 XML/文件 IO 或结构校验。
+//!
+//! 通过 convert 与 wire 类型转换；往返会规范化数值布尔，并按现有规则
+//! 写出默认值、补写四个部件状态字段或省略仍为 None 的可选字段。
+//! 因此 model 往返保证值模型语义，不保证原字段缺失状态或 XML 字节保真。
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum XmlDocument {
     Ship(ShipDocument),

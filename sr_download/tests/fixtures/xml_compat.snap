@@ -1,0 +1,121 @@
+## minimal-ship
+verify: true fake ship
+raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+model-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: Ship:<Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+## typed-other-root
+verify: true not ship
+raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+model-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: ERROR UnsupportedRoot
+## trailing-second-document
+verify: true fake ship
+raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+model-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: Ship:<Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+## unknown-extension
+verify: true fake ship
+raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+model-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: Ship:<Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+## nonzero-flags-and-omitted-options
+verify: true fake ship
+raw-ship: <Ship version="2" liftedOff="-2" touchingGround="3"><Parts><Part partType="pod-1" id="1" x="-0" y="0.125" editorAngle="0" angle="0.000000001" angleV="2.5" flippedX="-1" activated="2" inflate="-3" deployed="0" rope="1"/></Parts><Connections/><DisconnectedParts/></Ship>
+model-ship: <Ship version="2" liftedOff="1" touchingGround="1"><Parts><Part partType="pod-1" id="1" x="-0" y="0.125" editorAngle="0" angle="0.000000001" angleV="2.5" flippedX="1" flippedY="0" activated="1" exploded="0" inflate="1" deployed="0" rope="1"/></Parts><Connections/><DisconnectedParts/></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: Ship:<Ship version="2" liftedOff="1" touchingGround="1"><Parts><Part partType="pod-1" id="1" x="-0" y="0.125" editorAngle="0" angle="0.000000001" angleV="2.5" flippedX="1" flippedY="0" activated="1" exploded="0" inflate="1" deployed="0" rope="1"/></Parts><Connections/><DisconnectedParts/></Ship>
+## legacy-root-staging
+verify: true fake ship
+raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="pod-1" id="1" x="0" y="0.75" editorAngle="0" angle="0" angleV="0"/></Parts><Connections/><DisconnectedParts/></Ship>
+model-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="pod-1" id="1" x="0" y="0.75" editorAngle="0" angle="0" angleV="0" flippedX="0" flippedY="0" activated="0" exploded="0"/></Parts><Connections/><DisconnectedParts/></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: Ship:<Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="pod-1" id="1" x="0" y="0.75" editorAngle="0" angle="0" angleV="0" flippedX="0" flippedY="0" activated="0" exploded="0"/></Parts><Connections/><DisconnectedParts/></Ship>
+## escaping-and-stage-order
+verify: true broken ship
+raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="pod&amp;&quot;飞船" id="9223372036854775807" x="1" y="2" editorAngle="0" angle="0" angleV="0"><Pod name="A &amp; B &lt;C&gt;" throttle="0.25"><Staging currentStage="2"><Step/><Step><Activate Id="1" moved="-1"/><Activate Id="2" moved="0"/></Step></Staging></Pod></Part></Parts><Connections/><DisconnectedParts><DisconnectedPart><Parts/><Connections/></DisconnectedPart></DisconnectedParts></Ship>
+model-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="pod&amp;&quot;飞船" id="9223372036854775807" x="1" y="2" editorAngle="0" angle="0" angleV="0" flippedX="0" flippedY="0" activated="0" exploded="0"><Pod name="A &amp; B &lt;C&gt;" throttle="0.25"><Staging currentStage="2"><Step/><Step><Activate Id="1" moved="1"/><Activate Id="2" moved="0"/></Step></Staging></Pod></Part></Parts><Connections/><DisconnectedParts><DisconnectedPart><Parts/><Connections/></DisconnectedPart></DisconnectedParts></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: Ship:<Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="pod&amp;&quot;飞船" id="9223372036854775807" x="1" y="2" editorAngle="0" angle="0" angleV="0" flippedX="0" flippedY="0" activated="0" exploded="0"><Pod name="A &amp; B &lt;C&gt;" throttle="0.25"><Staging currentStage="2"><Step/><Step><Activate Id="1" moved="1"/><Activate Id="2" moved="0"/></Step></Staging></Pod></Part></Parts><Connections/><DisconnectedParts><DisconnectedPart><Parts/><Connections/></DisconnectedPart></DisconnectedParts></Ship>
+## attribute-control-characters
+verify: true not ship
+raw-ship: ERROR Deserialize
+model-ship: ERROR Deserialize
+raw-save: <Runtime time="0" firstStageActivated="0" solarSystem="A	B
+CD &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
+model-save: <Runtime time="0" firstStageActivated="0" solarSystem="A	B
+CD &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
+any: Save:<Runtime time="0" firstStageActivated="0" solarSystem="A	B
+CD &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
+## unmodeled-lander-state
+verify: true verified ship
+raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="lander-1" id="1" x="0" y="0" editorAngle="0" angle="0" angleV="0"/></Parts><Connections/><DisconnectedParts/></Ship>
+model-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="lander-1" id="1" x="0" y="0" editorAngle="0" angle="0" angleV="0" flippedX="0" flippedY="0" activated="0" exploded="0"/></Parts><Connections/><DisconnectedParts/></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: Ship:<Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="lander-1" id="1" x="0" y="0" editorAngle="0" angle="0" angleV="0" flippedX="0" flippedY="0" activated="0" exploded="0"/></Parts><Connections/><DisconnectedParts/></Ship>
+## missing-save-pod-id
+verify: true not ship
+raw-ship: ERROR Deserialize
+model-ship: ERROR Deserialize
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: ERROR Deserialize
+## unmodeled-runtime-challenge-state
+verify: true not ship
+raw-ship: ERROR Deserialize
+model-ship: ERROR Deserialize
+raw-save: <Runtime time="0" firstStageActivated="0" solarSystem="Solar System" shipId="1" podId="1"><Nodes/></Runtime>
+model-save: <Runtime time="0" firstStageActivated="0" solarSystem="Solar System" shipId="1" podId="1"><Nodes/></Runtime>
+any: Save:<Runtime time="0" firstStageActivated="0" solarSystem="Solar System" shipId="1" podId="1"><Nodes/></Runtime>
+## minimal-save
+verify: true not ship
+raw-ship: ERROR Deserialize
+model-ship: ERROR Deserialize
+raw-save: <Runtime time="0" firstStageActivated="0" solarSystem="Solar System" shipId="1" podId="1"><Nodes/></Runtime>
+model-save: <Runtime time="0" firstStageActivated="0" solarSystem="Solar System" shipId="1" podId="1"><Nodes/></Runtime>
+any: Save:<Runtime time="0" firstStageActivated="0" solarSystem="Solar System" shipId="1" podId="1"><Nodes/></Runtime>
+## mixed-save-nodes
+verify: true not ship
+raw-ship: ERROR Deserialize
+model-ship: ERROR Deserialize
+raw-save: <Runtime time="12.5" firstStageActivated="-1" solarSystem="A &amp; B" shipId="1" podId="2"><Nodes><PlanetNode name="Earth"/><ShipNode id="1" planet="Earth" planetRadius="100" x="1" y="2" vx="3" vy="4"><Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship></ShipNode><PlanetNode name="Mars" trueAnomaly="1.25"/></Nodes></Runtime>
+model-save: <Runtime time="12.5" firstStageActivated="1" solarSystem="A &amp; B" shipId="1" podId="2"><Nodes><PlanetNode name="Earth"/><ShipNode id="1" planet="Earth" planetRadius="100" x="1" y="2" vx="3" vy="4"><Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship></ShipNode><PlanetNode name="Mars" trueAnomaly="1.25"/></Nodes></Runtime>
+any: Save:<Runtime time="12.5" firstStageActivated="1" solarSystem="A &amp; B" shipId="1" podId="2"><Nodes><PlanetNode name="Earth"/><ShipNode id="1" planet="Earth" planetRadius="100" x="1" y="2" vx="3" vy="4"><Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship></ShipNode><PlanetNode name="Mars" trueAnomaly="1.25"/></Nodes></Runtime>
+## malformed-first-root
+verify: false not xml
+raw-ship: ERROR Deserialize
+model-ship: ERROR Deserialize
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: ERROR Serialize
+## missing-root
+verify: true not ship
+raw-ship: ERROR Deserialize
+model-ship: ERROR Deserialize
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: ERROR UnsupportedRoot
+## comment-prolog
+verify: true fake ship
+raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+model-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+raw-save: ERROR Deserialize
+model-save: ERROR Deserialize
+any: Ship:<Ship version="1" liftedOff="0" touchingGround="1"><Parts/><Connections/><DisconnectedParts/></Ship>
+fragment "": true not ship
+fragment "text": true not ship
+fragment "<A/><B/>": true not ship
+fragment "text<A/>": true not ship
+fragment "<A>": false not xml
+quick-xml-error-conversion: Serialize

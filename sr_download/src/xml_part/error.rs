@@ -1,3 +1,8 @@
+//! 兼容的 XML 错误接口；保留既有变体、显示文本及 From 映射。
+//!
+//! Reader 的 quick_xml::Error 仍映射为 Serialize(String)，Serde 的 DeError
+//! 映射为 Deserialize；不额外暴露 source 链，以维持历史可观察行为。
+
 #[derive(Debug)]
 pub enum XmlError {
     Io(std::io::Error),

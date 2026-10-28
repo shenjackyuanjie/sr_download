@@ -84,38 +84,96 @@
                         <div>
                             <p class="eyebrow">Market</p>
                             <h1>数据市场</h1>
-                            <p class="page-heading__description">浏览最近入库的飞船、存档和其他 XML 数据。</p>
+                            <p class="page-heading__description">按 ID、大小、类型和入库时间检索已归档的飞船与存档 XML。</p>
                         </div>
                         <div class="refresh-control">
                             <span id="market-updated-at">尚未更新</span>
                             <button class="button button--secondary" id="refresh-market" type="button">刷新市场</button>
                         </div>
                     </div>
-                    <div class="market-toolbar">
-                        <label class="market-filter">类型
-                            <select id="market-type">
-                                <option value="all">全部数据</option>
-                                <option value="ship">飞船</option>
-                                <option value="save">存档</option>
-                                <option value="unknown">其他 XML</option>
-                            </select>
-                        </label>
-                        <label class="market-filter">每页
-                            <select id="market-limit">
-                                <option value="24">24 条</option>
-                                <option value="48" selected>48 条</option>
-                                <option value="96">96 条</option>
-                            </select>
-                        </label>
-                        <span class="market-count" id="market-count">—</span>
-                    </div>
                     <div class="notice notice--error" id="market-error" role="alert" hidden></div>
-                    <section class="market-grid" id="market-grid" aria-live="polite">
-                        <div class="market-empty" id="market-loading">正在载入最近数据…</div>
+                    <section class="content-section market-panel" aria-labelledby="market-list-heading">
+                        <div class="market-panel__head">
+                            <div class="market-panel__title">
+                                <h2 id="market-list-heading">记录列表</h2>
+                                <span class="market-count" id="market-count">—</span>
+                            </div>
+                            <form class="market-search" id="market-search-form" role="search">
+                                <label class="sr-only" for="market-search-field">搜索字段</label>
+                                <select id="market-search-field"></select>
+                                <label class="sr-only" for="market-search-op">搜索操作符</label>
+                                <select id="market-search-op"></select>
+                                <label class="sr-only" for="market-search-value">搜索值</label>
+                                <input id="market-search-value" type="search" autocomplete="off"
+                                    placeholder="输入关键词后回车" />
+                                <button class="button button--primary" id="market-search-submit" type="submit">搜索</button>
+                                <button class="button button--secondary" id="clear-market-search" type="button">清除搜索</button>
+                            </form>
+                        </div>
+                        <div class="market-filters">
+                            <label class="market-filter">类型
+                                <select id="market-type">
+                                    <option value="all">全部数据</option>
+                                    <option value="ship">飞船</option>
+                                    <option value="save">存档</option>
+                                    <option value="unknown">其他 XML</option>
+                                </select>
+                            </label>
+                            <label class="market-filter">大小
+                                <select id="market-size">
+                                    <option value="all">不限</option>
+                                    <option value="lt-1k">小于 1 KB</option>
+                                    <option value="1k-10k">1–10 KB</option>
+                                    <option value="10k-100k">10–100 KB</option>
+                                    <option value="100k-1m">100 KB–1 MB</option>
+                                    <option value="gt-1m">大于 1 MB</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                            </label>
+                            <div class="market-size-custom" id="market-size-custom" hidden>
+                                <input id="market-min-len" type="number" min="0" step="1" inputmode="numeric"
+                                    aria-label="最小大小（KB）" placeholder="最小 KB" />
+                                <span class="market-size-sep" aria-hidden="true">—</span>
+                                <input id="market-max-len" type="number" min="0" step="1" inputmode="numeric"
+                                    aria-label="最大大小（KB）" placeholder="最大 KB" />
+                                <button class="button button--secondary" id="apply-market-size" type="button">应用</button>
+                            </div>
+                            <label class="market-filter">XML
+                                <select id="market-xml">
+                                    <option value="all">不限</option>
+                                    <option value="valid">校验通过</option>
+                                    <option value="invalid">校验失败</option>
+                                </select>
+                            </label>
+                            <span class="market-range" id="market-range">—</span>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="record-table market-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">序号</th>
+                                        <th scope="col" aria-sort="descending">
+                                            <button class="sort-button" type="button" data-market-sort="id">记录 ID<span class="sort-indicator" aria-hidden="true"></span></button>
+                                        </th>
+                                        <th scope="col">类型</th>
+                                        <th scope="col">
+                                            <button class="sort-button" type="button" data-market-sort="len">大小<span class="sort-indicator" aria-hidden="true"></span></button>
+                                        </th>
+                                        <th scope="col">XML</th>
+                                        <th scope="col">Blake3</th>
+                                        <th scope="col">
+                                            <button class="sort-button" type="button" data-market-sort="time">入库时间<span class="sort-indicator" aria-hidden="true"></span></button>
+                                        </th>
+                                        <th scope="col"><span class="sr-only">操作</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="market-rows">
+                                    <tr class="table-loading" aria-busy="true"><td colspan="8">正在载入最近数据…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <nav class="market-pagination" id="market-pagination" aria-label="市场分页"></nav>
                     </section>
-                    <div class="market-actions">
-                        <button class="button button--secondary" id="market-load-more" type="button" hidden>加载更早的数据</button>
-                    </div>
                 </section>
 
                 <section class="tab-panel" id="panel-record" role="tabpanel"

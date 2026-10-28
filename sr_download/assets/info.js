@@ -12,6 +12,46 @@ const DEFAULT_MIN_ID = 76858;
 const REFRESH_INTERVAL_MS = 30000;
 const VALID_TABS = new Set(['overview', 'market', 'record']);
 
+const MARKET_PAGE_SIZES = [25, 50, 100];
+
+// 市场表格可检索的字段，type 决定可用的操作符与输入校验。
+const MARKET_FIELDS = [
+    { key: 'save_id', label: '记录 ID', type: 'number' },
+    { key: 'save_type', label: '数据类型', type: 'text' },
+    { key: 'len', label: '大小（字节）', type: 'number' },
+    { key: 'xml_tested', label: 'XML 校验', type: 'bool' },
+    { key: 'blake_hash', label: 'Blake3', type: 'text' },
+    { key: 'time', label: '入库时间', type: 'number' },
+];
+
+const MARKET_OPS = {
+    eq: '等于',
+    ne: '不等于',
+    ilike: '包含',
+    not_ilike: '不包含',
+    gt: '大于',
+    lt: '小于',
+    gte: '大于等于',
+    lte: '小于等于',
+    is_null: '为空',
+    is_not_null: '不为空',
+};
+
+const MARKET_OPS_BY_TYPE = {
+    text: ['ilike', 'not_ilike', 'eq', 'ne', 'is_null', 'is_not_null'],
+    number: ['gte', 'lte', 'gt', 'lt', 'eq', 'ne', 'is_null', 'is_not_null'],
+    bool: ['eq', 'ne', 'is_null', 'is_not_null'],
+};
+
+const MARKET_SIZE_PRESETS = {
+    all: [null, null],
+    'lt-1k': [null, 1024],
+    '1k-10k': [1024, 10240],
+    '10k-100k': [10240, 102400],
+    '100k-1m': [102400, 1048576],
+    'gt-1m': [1048576, null],
+};
+
 class DashboardApp {
     constructor() {
         this.activeTab = 'overview';
@@ -27,11 +67,23 @@ class DashboardApp {
         this.overviewController = null;
         this.marketController = null;
         this.marketRecords = [];
-        this.marketBefore = null;
-        this.marketHasMore = false;
         this.marketLoaded = false;
-        this.marketFilter = 'all';
-        this.marketLimit = 48;
+        this.marketTotal = 0;
+        this.marketTotalLen = 0;
+        this.market = {
+            page: 1,
+            limit: 25,
+            type: 'all',
+            xml: 'all',
+            sort: 'id',
+            desc: true,
+            minLen: null,
+            maxLen: null,
+            logic: 'and',
+            filters: [],
+        };
+        // 快速搜索栏的条件，与高级搜索条件一起提交。
+        this.marketQuick = null;
         this.lookupController = null;
         this.toastTimer = null;
 
@@ -42,13 +94,22 @@ class DashboardApp {
             overviewError: document.getElementById('overview-error'),
             latestRecords: document.getElementById('latest-records'),
             marketRefresh: document.getElementById('refresh-market'),
-            marketType: document.getElementById('market-type'),
-            marketLimit: document.getElementById('market-limit'),
             marketUpdatedAt: document.getElementById('market-updated-at'),
-            marketCount: document.getElementById('market-count'),
             marketError: document.getElementById('market-error'),
-            marketGrid: document.getElementById('market-grid'),
-            marketLoadMore: document.getElementById('market-load-more'),
+            marketRows: document.getElementById('market-rows'),
+            marketPagination: document.getElementById('market-pagination'),
+            marketType: document.getElementById('market-type'),
+            marketXml: document.getElementById('market-xml'),
+            marketSize: document.getElementById('market-size'),
+            marketSizeCustom: document.getElementById('market-size-custom'),
+            marketMinLen: document.getElementById('market-min-len'),
+            marketMaxLen: document.getElementById('market-max-len'),
+            marketApplySize: document.getElementById('apply-market-size'),
+            marketSearchForm: document.getElementById('market-search-form'),
+            marketSearchField: document.getElementById('market-search-field'),
+            marketSearchOp: document.getElementById('market-search-op'),
+            marketSearchValue: document.getElementById('market-search-value'),
+            marketClearSearch: document.getElementById('clear-market-search'),
             lookupForm: document.getElementById('lookup-form'),
             lookupInput: document.getElementById('record-id'),
             lookupSubmit: document.getElementById('lookup-submit'),
@@ -72,6 +133,7 @@ class DashboardApp {
     }
 
     init() {
+        this.initMarketControls();
         this.bindEvents();
 
         const locationState = this.readLocation();
@@ -107,16 +169,53 @@ class DashboardApp {
         });
 
         this.elements.refresh.addEventListener('click', () => this.loadOverview());
-        this.elements.marketRefresh.addEventListener('click', () => this.loadMarket(true));
+        this.elements.marketRefresh.addEventListener('click', () => this.loadMarket());
+        this.elements.marketSearchForm.addEventListener('submit', (event) => this.submitMarketSearch(event));
+        this.elements.marketSearchField.addEventListener('change', () => {
+            refreshMarketOps(this.elements.marketSearchField, this.elements.marketSearchOp);
+        });
         this.elements.marketType.addEventListener('change', () => {
-            this.marketFilter = this.elements.marketType.value;
-            this.loadMarket(true);
+            this.market.type = this.elements.marketType.value;
+            this.reloadMarket();
         });
-        this.elements.marketLimit.addEventListener('change', () => {
-            this.marketLimit = Number(this.elements.marketLimit.value) || 48;
-            this.loadMarket(true);
+        this.elements.marketXml.addEventListener('change', () => {
+            this.market.xml = this.elements.marketXml.value;
+            this.reloadMarket();
         });
-        this.elements.marketLoadMore.addEventListener('click', () => this.loadMarket(false));
+        this.elements.marketSize.addEventListener('change', () => {
+            this.applyMarketSizePreset(this.elements.marketSize.value);
+        });
+        this.elements.marketApplySize.addEventListener('click', () => this.applyCustomMarketSize());
+        for (const input of [this.elements.marketMinLen, this.elements.marketMaxLen]) {
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    this.applyCustomMarketSize();
+                }
+            });
+        }
+        this.elements.marketClearSearch.addEventListener('click', () => this.clearMarketSearch());
+        this.elements.marketPagination.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-market-page]');
+            if (button) this.goMarketPage(button.dataset.marketPage);
+        });
+        this.elements.marketPagination.addEventListener('change', (event) => {
+            if (event.target.id === 'market-page-input') {
+                this.goMarketPage(event.target.value);
+            } else if (event.target.id === 'market-limit') {
+                this.market.limit = Number(event.target.value) || MARKET_PAGE_SIZES[0];
+                this.reloadMarket();
+            }
+        });
+        this.elements.marketPagination.addEventListener('keydown', (event) => {
+            if (event.target.id === 'market-page-input' && event.key === 'Enter') {
+                event.preventDefault();
+                this.goMarketPage(event.target.value);
+            }
+        });
+        document.querySelectorAll('[data-market-sort]').forEach((button) => {
+            button.addEventListener('click', () => this.setMarketSort(button.dataset.marketSort));
+        });
         this.elements.lookupForm.addEventListener('submit', (event) => {
             event.preventDefault();
             this.lookupRecord();
@@ -134,7 +233,7 @@ class DashboardApp {
                 this.copyText(copyButton.dataset.copyValue, '哈希已复制');
             }
         });
-        this.elements.marketGrid.addEventListener('click', (event) => {
+        this.elements.marketRows.addEventListener('click', (event) => {
             const recordButton = event.target.closest('[data-record-id]');
             if (recordButton) this.openRecord(Number(recordButton.dataset.recordId));
             const copyButton = event.target.closest('[data-copy-value]');
@@ -247,7 +346,7 @@ class DashboardApp {
 
         this.clearRefreshTimer();
         if (tab === 'overview') this.scheduleRefresh();
-        if (tab === 'market' && !this.marketLoaded && !this.marketController) this.loadMarket(true);
+        if (tab === 'market' && !this.marketLoaded && !this.marketController) this.loadMarket();
         if (updateUrl) this.writeLocation(tab);
     }
 
@@ -314,63 +413,238 @@ class DashboardApp {
         }
     }
 
-    async loadMarket(reset = true) {
+    initMarketControls() {
+        this.elements.marketSearchField.innerHTML = MARKET_FIELDS
+            .map((field) => '<option value="' + field.key + '">' + escapeHtml(field.label) + '</option>')
+            .join('');
+        this.elements.marketSearchField.value = 'save_id';
+        refreshMarketOps(this.elements.marketSearchField, this.elements.marketSearchOp);
+        this.renderMarketSortState();
+    }
+
+    marketField(key) {
+        return MARKET_FIELDS.find((field) => field.key === key) || MARKET_FIELDS[0];
+    }
+
+    pendingMarketFilters() {
+        const filters = this.marketQuick ? [this.marketQuick] : [];
+        return filters.concat(this.market.filters);
+    }
+
+    buildMarketParams() {
+        const state = this.market;
+        const params = new URLSearchParams({
+            page: String(state.page),
+            limit: String(state.limit),
+            type: state.type,
+            sort: state.sort,
+            dir: state.desc ? 'desc' : 'asc',
+            logic: state.logic,
+        });
+        if (state.xml !== 'all') params.set('xml', state.xml);
+        if (state.minLen !== null) params.set('min_len', String(state.minLen));
+        if (state.maxLen !== null) params.set('max_len', String(state.maxLen));
+        const filters = this.pendingMarketFilters();
+        if (filters.length) params.set('filters', JSON.stringify(filters));
+        return params;
+    }
+
+    reloadMarket() {
+        this.market.page = 1;
+        this.loadMarket();
+    }
+
+    async loadMarket() {
         if (this.marketController) this.marketController.abort();
-        if (reset) {
-            this.marketBefore = null;
-            this.marketRecords = [];
-            this.marketHasMore = false;
-            this.marketLoaded = false;
-            this.elements.marketGrid.innerHTML = '<div class="market-empty">正在载入最近数据…</div>';
-        }
         const controller = new AbortController();
         this.marketController = controller;
         this.elements.marketError.hidden = true;
         this.setButtonBusy(this.elements.marketRefresh, true, '刷新中');
-        if (!reset) this.setButtonBusy(this.elements.marketLoadMore, true, '载入中');
+        this.elements.marketRows.setAttribute('aria-busy', 'true');
+        if (!this.marketLoaded) this.renderMarketPlaceholder('正在载入最近数据…');
 
         try {
-            const params = new URLSearchParams({
-                limit: String(this.marketLimit),
-                type: this.marketFilter,
-            });
-            if (!reset && this.marketBefore !== null) {
-                params.set('before', String(this.marketBefore));
-            }
-            const payload = await this.fetchPayload(API.market + '?' + params.toString(), controller.signal);
+            const url = API.market + '?' + this.buildMarketParams().toString();
+            const payload = await this.fetchPayload(url, controller.signal);
             const page = payload.data || {};
-            const records = Array.isArray(page.records) ? page.records : [];
-            this.marketRecords = reset ? records : this.marketRecords.concat(records);
-            this.marketBefore = page.next_before ?? null;
-            this.marketHasMore = Boolean(page.has_more);
+            this.marketRecords = Array.isArray(page.records) ? page.records : [];
+            this.marketTotal = Number(page.total) || 0;
+            this.marketTotalLen = Number(page.total_len) || 0;
+            this.market.page = Math.max(1, Number(page.page) || 1);
             this.marketLoaded = true;
             this.renderMarket();
+            this.elements.marketUpdatedAt.textContent = '更新于 ' + formatClock(new Date());
         } catch (error) {
             if (error.name === 'AbortError') return;
-            this.elements.marketError.textContent = '市场数据载入失败：' + (error.message || '未知错误');
-            this.elements.marketError.hidden = false;
-            if (reset) {
-                this.marketRecords = [];
-                this.renderMarket();
-            }
+            this.showMarketError('市场数据载入失败：' + (error.message || '未知错误'));
+            if (!this.marketLoaded) this.renderMarketPlaceholder('列表载入失败，请稍后重试。');
         } finally {
             if (this.marketController === controller) {
                 this.marketController = null;
                 this.setButtonBusy(this.elements.marketRefresh, false, '刷新市场');
-                if (!reset) this.setButtonBusy(this.elements.marketLoadMore, false, '加载更早的数据');
+                this.elements.marketRows.setAttribute('aria-busy', 'false');
             }
         }
     }
 
     renderMarket() {
-        this.elements.marketGrid.innerHTML = this.marketRecords.length
-            ? this.marketRecords.map(renderMarketCard).join('')
-            : '<div class="market-empty"><strong>这里还没有数据</strong><span>当前筛选条件下没有可展示的记录。</span></div>';
-        this.elements.marketLoadMore.hidden = !this.marketHasMore;
-        this.elements.marketCount.textContent = this.marketRecords.length
-            ? '已显示 ' + formatNumber(this.marketRecords.length) + ' 条'
-            : '暂无记录';
-        this.elements.marketUpdatedAt.textContent = '更新于 ' + formatClock(new Date());
+        const offset = (this.market.page - 1) * this.market.limit;
+        this.elements.marketRows.innerHTML = this.marketRecords.length
+            ? this.marketRecords
+                .map((record, index) => renderMarketRow(record, offset + index + 1))
+                .join('')
+            : '<tr class="table-empty"><td colspan="8">当前筛选条件下没有记录。</td></tr>';
+
+        const first = this.marketRecords.length ? offset + 1 : 0;
+        const last = offset + this.marketRecords.length;
+        setText('market-count',
+            '共 ' + formatNumber(this.marketTotal) + ' 条 · 合计 ' + formatBytes(this.marketTotalLen));
+        setText('market-range',
+            this.marketTotal ? '第 ' + formatNumber(first) + '–' + formatNumber(last) + ' 条' : '没有匹配记录');
+        this.renderMarketPagination();
+        this.renderMarketSortState();
+    }
+
+    renderMarketPlaceholder(message) {
+        this.elements.marketRows.innerHTML = '<tr class="table-loading"><td colspan="8">' +
+            escapeHtml(message) + '</td></tr>';
+        this.elements.marketPagination.innerHTML = '';
+    }
+
+    renderMarketPagination() {
+        const totalPages = Math.max(1, Math.ceil(this.marketTotal / this.market.limit));
+        const page = Math.min(this.market.page, totalPages);
+        const atStart = page <= 1;
+        const atEnd = page >= totalPages;
+        const pageButton = (target, label, ariaLabel, disabled) =>
+            '<button type="button" data-market-page="' + target + '" aria-label="' + ariaLabel + '"' +
+            (disabled ? ' disabled' : '') + '>' + label + '</button>';
+
+        this.elements.marketPagination.innerHTML =
+            '<div class="market-page">' +
+                pageButton(1, '«', '首页', atStart) +
+                pageButton(page - 1, '‹', '上一页', atStart) +
+                '<span class="market-page__label">第' +
+                    '<input id="market-page-input" type="number" inputmode="numeric" min="1" max="' +
+                    totalPages + '" value="' + page + '" aria-label="页码" />/ ' +
+                    formatNumber(totalPages) + ' 页</span>' +
+                pageButton(page + 1, '›', '下一页', atEnd) +
+                pageButton(totalPages, '»', '末页', atEnd) +
+            '</div>' +
+            '<label class="market-page-size">每页' +
+                '<select id="market-limit" aria-label="每页条数">' +
+                MARKET_PAGE_SIZES.map((size) => '<option value="' + size + '"' +
+                    (size === this.market.limit ? ' selected' : '') + '>' + size + ' 条</option>').join('') +
+                '</select></label>';
+    }
+
+    renderMarketSortState() {
+        document.querySelectorAll('[data-market-sort]').forEach((button) => {
+            const header = button.closest('th');
+            const active = button.dataset.marketSort === this.market.sort;
+            header.setAttribute('aria-sort', active ? (this.market.desc ? 'descending' : 'ascending') : 'none');
+        });
+    }
+
+    setMarketSort(field) {
+        if (this.market.sort === field) {
+            this.market.desc = !this.market.desc;
+        } else {
+            this.market.sort = field;
+            this.market.desc = true;
+        }
+        this.reloadMarket();
+    }
+
+    applyMarketSizePreset(preset) {
+        this.elements.marketSizeCustom.hidden = preset !== 'custom';
+        if (preset === 'custom') {
+            this.elements.marketMinLen.focus();
+            return;
+        }
+        const [minLen, maxLen] = MARKET_SIZE_PRESETS[preset] || [null, null];
+        this.market.minLen = minLen;
+        this.market.maxLen = maxLen;
+        this.reloadMarket();
+    }
+
+    applyCustomMarketSize() {
+        const readBytes = (input, label) => {
+            const raw = input.value.trim();
+            if (raw === '') return null;
+            const kilobytes = Number(raw);
+            if (!Number.isFinite(kilobytes) || kilobytes < 0) {
+                throw new Error(label + '需要不小于 0 的数字');
+            }
+            return Math.round(kilobytes * 1024);
+        };
+
+        let minLen;
+        let maxLen;
+        try {
+            minLen = readBytes(this.elements.marketMinLen, '最小大小');
+            maxLen = readBytes(this.elements.marketMaxLen, '最大大小');
+        } catch (error) {
+            this.showMarketError(error.message);
+            return;
+        }
+        if (minLen !== null && maxLen !== null && minLen > maxLen) {
+            this.showMarketError('最小大小不能大于最大大小');
+            return;
+        }
+        this.market.minLen = minLen;
+        this.market.maxLen = maxLen;
+        this.reloadMarket();
+    }
+
+    submitMarketSearch(event) {
+        event.preventDefault();
+        const field = this.elements.marketSearchField.value;
+        const op = this.elements.marketSearchOp.value;
+        const value = this.elements.marketSearchValue.value.trim();
+        const needsValue = op !== 'is_null' && op !== 'is_not_null';
+        if (needsValue && value === '') {
+            this.showMarketError('请输入搜索值，或改用“为空/不为空”操作符');
+            this.elements.marketSearchValue.focus();
+            return;
+        }
+        this.marketQuick = needsValue ? { field: field, op: op, value: value } : { field: field, op: op };
+        this.reloadMarket();
+    }
+
+    clearMarketSearch() {
+        this.marketQuick = null;
+        this.market.filters = [];
+        this.market.logic = 'and';
+        this.market.type = 'all';
+        this.market.xml = 'all';
+        this.market.minLen = null;
+        this.market.maxLen = null;
+        this.market.sort = 'id';
+        this.market.desc = true;
+        this.elements.marketType.value = 'all';
+        this.elements.marketXml.value = 'all';
+        this.elements.marketSize.value = 'all';
+        this.elements.marketSizeCustom.hidden = true;
+        this.elements.marketMinLen.value = '';
+        this.elements.marketMaxLen.value = '';
+        this.elements.marketSearchValue.value = '';
+        refreshMarketOps(this.elements.marketSearchField, this.elements.marketSearchOp);
+        this.elements.marketError.hidden = true;
+        this.reloadMarket();
+    }
+
+    goMarketPage(raw) {
+        const totalPages = Math.max(1, Math.ceil(this.marketTotal / this.market.limit));
+        const parsed = Math.floor(Number(raw));
+        const page = Math.min(totalPages, Math.max(1, Number.isFinite(parsed) ? parsed : 1));
+        this.market.page = page;
+        this.loadMarket();
+    }
+
+    showMarketError(message) {
+        this.elements.marketError.textContent = message;
+        this.elements.marketError.hidden = false;
     }
 
     setServiceState(state, label) {
@@ -754,24 +1028,50 @@ function renderRecordRow(item) {
             '">查看详情</button></td></tr>';
 }
 
-function renderMarketCard(record) {
+function renderMarketRow(record, index) {
     const id = Number(record.save_id);
-    const xmlState = record.xml_tested ? 'ok' : 'warn';
-    const xmlLabel = record.xml_tested ? 'XML 通过' : 'XML 未通过';
+    const type = String(record.save_type || 'unknown').toLowerCase();
     const hash = record.blake_hash || '';
-    return '<article class="market-card">' +
-        '<header class="market-card__header"><span class="type-pill type-pill--' +
-        escapeHtml(String(record.save_type || 'unknown').toLowerCase()) + '">' +
-        escapeHtml(formatType(record.save_type)) + '</span><span class="market-card__time">' +
-        escapeHtml(formatRecordTime(record.recorded_at)) + '</span></header>' +
-        '<div class="market-card__identity"><button class="record-id-button" type="button" data-record-id="' + id + '">#' +
-        formatNumber(id) + '</button><span class="status-badge" data-state="' + xmlState + '">' + xmlLabel + '</span></div>' +
-        '<dl class="market-card__meta"><div><dt>大小</dt><dd>' + escapeHtml(formatBytes(record.len)) + '</dd></div>' +
-        '<div><dt>数据类型</dt><dd>' + escapeHtml(formatType(record.save_type)) + '</dd></div></dl>' +
-        '<div class="market-card__hash"><code title="复制完整哈希">' + escapeHtml(truncateHash(hash)) + '</code>' +
-        '<button class="text-button" type="button" data-copy-value="' + escapeHtml(hash) + '">复制</button></div>' +
-        '<button class="button button--secondary market-card__action" type="button" data-record-id="' + id + '">查看档案</button>' +
-        '</article>';
+    const xmlState = record.xml_tested ? 'ok' : 'warn';
+    const xmlLabel = record.xml_tested ? '通过' : '失败';
+    return '<tr>' +
+        '<td data-label="序号">' + formatNumber(index) + '</td>' +
+        '<td data-label="记录 ID"><button class="record-id-button" type="button" data-record-id="' + id +
+            '">#' + formatNumber(id) + '</button></td>' +
+        '<td data-label="类型"><span class="type-pill type-pill--' + escapeHtml(type) + '">' +
+            escapeHtml(formatType(type)) + '</span></td>' +
+        '<td data-label="大小"><code>' + escapeHtml(formatBytes(record.len)) + '</code></td>' +
+        '<td data-label="XML"><span class="status-badge" data-state="' + xmlState + '">' + xmlLabel + '</span></td>' +
+        '<td data-label="Blake3"><button class="text-button" type="button" data-copy-value="' +
+            escapeHtml(hash) + '" title="复制完整哈希"><code>' + escapeHtml(truncateHash(hash)) +
+            '</code></button></td>' +
+        '<td data-label="入库时间">' + escapeHtml(formatMarketTime(record.recorded_at)) + '</td>' +
+        '<td data-label="操作"><button class="button button--secondary row-action" type="button" data-record-id="' +
+            id + '">查看档案</button></td>' +
+        '</tr>';
+}
+
+function refreshMarketOps(fieldSelect, opSelect) {
+    const field = MARKET_FIELDS.find((item) => item.key === fieldSelect.value) || MARKET_FIELDS[0];
+    const ops = MARKET_OPS_BY_TYPE[field.type] || MARKET_OPS_BY_TYPE.text;
+    const previous = opSelect.value;
+    opSelect.innerHTML = ops
+        .map((op) => '<option value="' + op + '">' + escapeHtml(MARKET_OPS[op]) + '</option>')
+        .join('');
+    opSelect.value = ops.includes(previous) ? previous : ops[0];
+}
+
+function formatMarketTime(value) {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    }).format(date);
 }
 
 function formatRecordTime(value) {
@@ -822,8 +1122,7 @@ function formatPartCategory(value) {
         dockport: '对接口',
         lander: '着陆腿',
         Satellite: '卫星部件',
-        unknown: '未知',
-    };
+        unknown: '未知',    };
     return labels[value] || value || '未知';
 }
 

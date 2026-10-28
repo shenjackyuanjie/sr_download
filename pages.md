@@ -142,15 +142,59 @@ enable = true
 后者使用 scale=500。
 
 ### GET `/api/market`
-获取最近入库的数据列表，用于网页“市场”页面。
+分页查询已入库的数据，用于网页“市场”页面。
 
 查询参数：
 
-- `limit`：每页数量，默认 48，最大 100
+- `page`：页码，从 1 开始，默认 1
+- `limit`：每页数量，默认 25，最大 100
 - `type`：`all`、`ship`、`save` 或 `unknown`
-- `before`：只返回记录 ID 小于该值的数据，用于继续加载更早记录
+- `sort`：排序字段，`id`（默认）、`len` 或 `time`
+- `dir`：排序方向，`asc` 或 `desc`（默认）
+- `min_len` / `max_len`：按数据长度（字节）过滤，两者同时给出时不能 min 大于 max
+- `xml`：`all`（默认）、`valid` 或 `invalid`
+- `logic`：多个高级条件之间的组合方式，`and`（默认）或 `or`
+- `filters`：JSON 数组，高级搜索条件，每项形如
+  `{"field":"len","op":"gte","value":1024}`
 
-返回的每条记录包含记录 ID、数据类型、长度、Blake3、XML 是否通过和入库时间。
+`filters` 支持的字段：`save_id`、`save_type`、`len`、`xml_tested`、`blake_hash`、`time`；
+支持的操作符：`eq`、`ne`、`ilike`、`not_ilike`、`gt`、`lt`、`gte`、`lte`、`is_null`、`is_not_null`。
+`ilike` 只适用于文本字段，`is_null` / `is_not_null` 不需要 `value`。
+一次请求最多 16 个条件，参数非法时返回 400，并带有具体原因。
+
+示例：
+
+```http
+GET /api/market?page=2&limit=25&type=ship&sort=len&dir=desc&min_len=1024&filters=[{"field":"time","op":"gte","value":"2026-01-01"}]
+```
+
+返回内容：
+
+```json
+{
+    "code": 200,
+    "msg": "ok",
+    "data": {
+        "records": [
+            {
+                "save_id": 1329431,
+                "save_type": "ship",
+                "len": 287,
+                "blake_hash": "…",
+                "xml_tested": true,
+                "recorded_at": "2026-10-28T08:12:00+00:00"
+            }
+        ],
+        "page": 2,
+        "limit": 25,
+        "total": 843824,
+        "total_len": 7452021120,
+        "has_more": true
+    }
+}
+```
+
+`total` 是当前筛选条件下的记录总数，`total_len` 是对应记录的长度总和，`has_more` 表示后面还有数据。
 
 ### GET `/resync`
 触发数据重新同步操作

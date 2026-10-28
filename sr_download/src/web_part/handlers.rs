@@ -16,8 +16,8 @@ use crate::{
 use super::{
     INFO_PAGE, RESYNC_TOKEN, api_request_counter_pp,
     models::{
-        DashboardOverview, LastData, LastSave, LastShip, MarketPage, MarketQuery, RawData,
-        RecordDetail, ServiceStatus,
+        DashboardOverview, LastData, LastSave, LastShip, MarketPage, MarketQuery, MarketRequest,
+        RawData, RecordDetail, ServiceStatus,
     },
     response::WebResponse,
     ship_analysis::{ShipAnalysis, analyze_ship},
@@ -110,20 +110,11 @@ pub async fn api_market(
     Query(query): Query<MarketQuery>,
 ) -> Json<WebResponse<MarketPage>> {
     api_request_counter_pp();
-    let limit = query.limit.unwrap_or(48).clamp(1, 100);
-    let save_type = match query.save_type.as_deref().unwrap_or("all") {
-        "" | "all" => None,
-        "ship" => Some(SaveType::Ship),
-        "save" => Some(SaveType::Save),
-        "unknown" => Some(SaveType::Unknown),
-        value => {
-            return Json(WebResponse::new_error(
-                StatusCode::BAD_REQUEST,
-                format!("unsupported market type: {value}"),
-            ));
-        }
+    let request = match MarketRequest::parse(query) {
+        Ok(request) => request,
+        Err(message) => return Json(WebResponse::new_error(StatusCode::BAD_REQUEST, message)),
     };
-    match MarketPage::from_db(&db, limit, save_type, query.before).await {
+    match MarketPage::from_db(&db, &request).await {
         Ok(page) => Json(WebResponse::new_normal(page)),
         Err(error) => Json(WebResponse::new_error(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -347,9 +338,8 @@ mod tests {
         let response = api_market(
             State(db),
             Query(MarketQuery {
-                limit: None,
                 save_type: Some("invalid".to_string()),
-                before: None,
+                ..Default::default()
             }),
         )
         .await;

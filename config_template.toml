@@ -8,10 +8,14 @@ idle_timeout_secs = 300
 statement_timeout_secs = 30
 
 [sync]
-# 每次 HTTP 请求的总超时（秒，有限正数）；船只/存档接口分别计时
-max_timeout = 1.0
-# 服务轮询的等待时间（秒，有限正数）
+# 每次 HTTP 请求的总超时（秒，有限正数）；船只/存档接口分别计时。
+# 1 秒不足以覆盖 DNS 解析和跨洋链路，实测上游常在 0.6-1.3 秒返回。
+max_timeout = 10.0
+# 服务轮询的等待时间（秒，有限正数）：网络失败后、以及静默期的探测间隔
 serve_wait_time = 10.0
+# 探测不存在 ID 时的等待时间（秒，有限正数）。上游 blob ID 稀疏，
+# serve 会连续向前试探，这个值决定追赶速度，太小会触发上游节流。
+probe_wait_time = 3.0
 
 [sync.fast]
 # 同步区间为 [start_id, end_id)，worker_count / worker_size 必须大于 0

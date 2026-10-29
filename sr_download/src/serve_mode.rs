@@ -12,9 +12,24 @@ fn next_id(current: SaveId) -> anyhow::Result<SaveId> {
     Ok(next)
 }
 
+/// 连续缺失多少个 ID 之后，从追赶节奏退回常规轮询节奏。
+///
+/// 上游 blob ID 是稀疏分配的：多数 ID 没有 SimpleRockets 1 的数据，
+/// 抓到数据前需要连续向前试探，因此前进阶段用较短的间隔，静默期再放慢。
+const MISSING_BURST: u32 = 60;
+
+fn wait_after_miss(conf: &config::ConfigFile, missing_streak: u32) -> std::time::Duration {
+    if missing_streak <= MISSING_BURST {
+        conf.probe_duration()
+    } else {
+        conf.serve_duration()
+    }
+}
+
 async fn download_loop(db: &PgPool, conf: &config::ConfigFile) -> anyhow::Result<()> {
     let client = Downloader::try_new(Some(conf.net_timeout()))?;
     let mut current = db_part::search::max_id(db).await;
+    let mut missing_streak = 0u32;
     event!(Level::INFO, current, "从数据库最大 ID 继续下载");
     loop {
         let id = next_id(current)?;
@@ -31,16 +46,23 @@ async fn download_loop(db: &PgPool, conf: &config::ConfigFile) -> anyhow::Result
                 .await
                 .with_context(|| format!("保存 ID {id} 失败"))?;
                 current = id;
+                missing_streak = 0;
                 event!(Level::INFO, id, "下载并保存成功");
                 // 连续上传时不等待，立即尝试下一条。
                 continue;
             }
-            Ok(None) => event!(Level::DEBUG, id, "等待新数据"),
+            Ok(None) => {
+                // 上游 ID 稀疏，缺失不等于到达末端：前移游标继续探测。
+                current = id;
+                missing_streak = missing_streak.saturating_add(1);
+                event!(Level::DEBUG, id, "上游暂无该 ID，继续探测下一个");
+                tokio::time::sleep(wait_after_miss(conf, missing_streak)).await;
+            }
             Err(error) => {
-                event!(Level::WARN, id, error = %error, "下载暂时失败，等待后重试同一 ID")
+                event!(Level::WARN, id, error = %error, "下载暂时失败，等待后重试同一 ID");
+                tokio::time::sleep(conf.serve_duration()).await;
             }
         }
-        tokio::time::sleep(conf.serve_duration()).await;
     }
 }
 
@@ -95,6 +117,25 @@ pub async fn main(mut stop_receiver: Receiver<()>) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_ids_use_probe_pace_then_back_off() {
+        let mut conf = config::ConfigFile::default();
+        conf.sync.probe_wait_time = 3.0;
+        conf.sync.serve_wait_time = 10.0;
+        assert_eq!(
+            wait_after_miss(&conf, 1),
+            std::time::Duration::from_secs_f32(3.0)
+        );
+        assert_eq!(
+            wait_after_miss(&conf, MISSING_BURST),
+            std::time::Duration::from_secs_f32(3.0)
+        );
+        assert_eq!(
+            wait_after_miss(&conf, MISSING_BURST + 1),
+            std::time::Duration::from_secs_f32(10.0)
+        );
+    }
 
     #[test]
     fn next_id_stays_in_database_range() {

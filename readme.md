@@ -45,7 +45,8 @@ HTTP 与 PostgreSQL TLS 都走 rustls，构建不依赖 OpenSSL；交叉构建�
 
 - 只初始化所需的 schema；全表数据修复仅在 maintenance 中执行。
 - 下载具有总请求超时、连接超时与 32 MiB 单响应上限；网络错误与"记录不存在"分开处理，失败不写空数据覆盖原记录。
-- serve 只在保存成功后前移 ID，网络故障时重试同一条而不跳过；fast 复用连接池与 HTTP 客户端，单个任务失败后继续其余任务，最终返回错误状态，可重跑补齐。
+- serve 保存成功后前移 ID；上游对不存在的 ID 返回空内容时也前移并继续探测（上游 ID 稀疏，1329435 之后大量 ID 没有数据），网络故障时才重试同一条。追赶阶段按 `probe_wait_time` 节奏试探，连续缺失 60 次后退回 `serve_wait_time` 的静默节奏。
+- fast 复用连接池与 HTTP 客户端，单个任务失败后继续其余任务，最终返回错误状态，可重跑补齐。
 - Ctrl-C 停止派发并回收批量任务，再关闭连接池；已开启的事务由 SQLx 回滚。服务模式先停止接收请求，最多等待 10 秒再取消剩余请求。
 - maintenance 每页 100 条顺序处理，失败保留原数据并继续后续页面，最后返回错误；Ctrl-C 在完成当前页后退出。
 
@@ -56,7 +57,7 @@ HTTP 与 PostgreSQL TLS 都走 rustls，构建不依赖 OpenSSL；交叉构建�
 | 分组 | 关键字段 | 说明 |
 | --- | --- | --- |
 | `[db]` | `url`、`schema`、`max_connections` | 连接池上限、获取/空闲/语句超时（秒）、SQLx 日志开关 |
-| `[sync]` | `max_timeout`、`serve_wait_time` | 单次请求总超时与 serve 轮询间隔（秒） |
+| `[sync]` | `max_timeout`、`serve_wait_time`、`probe_wait_time` | 单次请求总超时、静默期轮询间隔与缺失 ID 探测间隔（秒） |
 | `[sync.fast]` | `start_id`、`end_id`、`worker_count`、`worker_size` | fast 模式的区间与并发批次 |
 | `[serve]` | `host_with_port`、`enable`、`resync_token`、`refresh_interval` | 监听地址、Web 开关、重同步令牌、缓存刷新间隔（毫秒） |
 

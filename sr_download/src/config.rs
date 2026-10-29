@@ -83,13 +83,16 @@ impl Default for FastSyncConfig {
 pub struct SyncConfig {
     pub max_timeout: f32,
     pub serve_wait_time: f32,
+    /// 探测不存在 ID 时的等待时间；上游 ID 稀疏，serve 需要逐个向前试探。
+    pub probe_wait_time: f32,
     pub fast: FastSyncConfig,
 }
 impl Default for SyncConfig {
     fn default() -> Self {
         Self {
-            max_timeout: 1.0,
+            max_timeout: 10.0,
             serve_wait_time: 10.0,
+            probe_wait_time: 3.0,
             fast: FastSyncConfig::default(),
         }
     }
@@ -202,6 +205,7 @@ impl ConfigFile {
         for (name, value) in [
             ("sync.max_timeout", self.sync.max_timeout),
             ("sync.serve_wait_time", self.sync.serve_wait_time),
+            ("sync.probe_wait_time", self.sync.probe_wait_time),
         ] {
             let duration = std::time::Duration::try_from_secs_f32(value)
                 .with_context(|| format!("{name} 必须是有限的正数秒数"))?;
@@ -259,6 +263,10 @@ impl ConfigFile {
 
     pub fn serve_duration(&self) -> std::time::Duration {
         std::time::Duration::from_secs_f32(self.sync.serve_wait_time)
+    }
+
+    pub fn probe_duration(&self) -> std::time::Duration {
+        std::time::Duration::from_secs_f32(self.sync.probe_wait_time)
     }
 
     pub fn net_timeout(&self) -> std::time::Duration {
@@ -324,6 +332,9 @@ mod tests {
             config = ConfigFile::default();
             config.sync.serve_wait_time = value;
             assert!(config.validate().is_err(), "serve_wait_time = {value}");
+            config = ConfigFile::default();
+            config.sync.probe_wait_time = value;
+            assert!(config.validate().is_err(), "probe_wait_time = {value}");
         }
     }
 

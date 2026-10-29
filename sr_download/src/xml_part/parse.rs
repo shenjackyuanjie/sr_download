@@ -20,7 +20,7 @@ fn detect_root(data: &str) -> XmlResult<String> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(event)) | Ok(Event::Empty(event)) => {
-                return Ok(String::from_utf8_lossy(event.name().as_ref()).to_string());
+                return Ok(event.name().as_ref().to_string());
             }
             Ok(Event::Eof) => return Err(XmlError::UnsupportedRoot("<empty>".to_string())),
             Ok(_) => {}

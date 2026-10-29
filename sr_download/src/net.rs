@@ -195,10 +195,7 @@ impl Downloader {
         loop {
             match reader.read_event().context("无法读取 XML 根元素")? {
                 Event::Start(element) | Event::Empty(element) => {
-                    ensure!(
-                        element.name().as_ref() == root.as_bytes(),
-                        "上游响应根元素不是 {root}"
-                    );
+                    ensure!(element.name().as_ref() == root, "上游响应根元素不是 {root}");
                     break;
                 }
                 Event::Eof => anyhow::bail!("上游响应缺少 XML 根元素"),

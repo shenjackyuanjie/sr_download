@@ -11,6 +11,7 @@ fn error_kind(error: XmlError) -> &'static str {
 }
 
 /// 此快照由重构前 HEAD + quick-xml 0.41 生成，固定接受范围和序列化结果。
+/// 升级到 0.42 后仅 `attribute-control-characters` 的写回随之改变（控制字符改为字符引用）。
 pub fn snapshot() -> String {
     let cases = [
         ("minimal-ship", "<Ship><Parts/><Connections/></Ship>"),

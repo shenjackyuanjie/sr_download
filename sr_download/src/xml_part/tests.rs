@@ -78,6 +78,18 @@ fn save_round_trip_model() {
 }
 
 #[test]
+fn attribute_control_characters_round_trip_as_references() {
+    const RAW: &str = r#"<Runtime time="0" firstStageActivated="0" solarSystem="A&#9;B&#10;C&#13;D" shipId="1" podId="1"><Nodes/></Runtime>"#;
+    let doc = parse::parse_save_xml(RAW).unwrap();
+    assert_eq!(doc.solar_system, "A\tB\nC\rD");
+
+    let xml = write::write_save_xml(&doc).unwrap();
+    assert!(xml.contains(r#"solarSystem="A&#9;B&#10;C&#13;D""#));
+    assert!(!xml.contains("A\tB"));
+    assert_eq!(parse::parse_save_xml(&xml).unwrap(), doc);
+}
+
+#[test]
 fn detects_document_type() {
     assert!(matches!(
         parse::parse_any_xml(EMPTY_SHIP).unwrap(),

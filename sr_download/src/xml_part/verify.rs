@@ -47,7 +47,7 @@ pub fn verify_xml(data: &str) -> quick_xml::Result<()> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(element)) => {
-                open_elements.push(element.name().as_ref().to_vec());
+                open_elements.push(element.name().as_ref().to_string());
             }
             Ok(Event::End(_)) => {
                 let _ = open_elements.pop();
@@ -55,7 +55,7 @@ pub fn verify_xml(data: &str) -> quick_xml::Result<()> {
             Ok(Event::Eof) => {
                 if let Some(element) = open_elements.last() {
                     return Err(quick_xml::Error::IllFormed(IllFormedError::MissingEndTag(
-                        String::from_utf8_lossy(element).into_owned(),
+                        element.clone(),
                     )));
                 }
                 break;
@@ -100,13 +100,13 @@ fn matches_basic_ship_shape(data: &str) -> bool {
             Ok(Event::Start(ref e)) => {
                 if !root_checked {
                     root_checked = true;
-                    if e.name() != QName(b"Ship") {
+                    if e.name() != QName("Ship") {
                         return false;
                     }
                 } else if depth == 1 {
                     match e.name() {
-                        QName(b"Parts") => has_parts = true,
-                        QName(b"Connections") => has_connections = true,
+                        QName("Parts") => has_parts = true,
+                        QName("Connections") => has_connections = true,
                         _ => {}
                     }
                 }
@@ -118,8 +118,8 @@ fn matches_basic_ship_shape(data: &str) -> bool {
                 }
                 if depth == 1 {
                     match e.name() {
-                        QName(b"Parts") => has_parts = true,
-                        QName(b"Connections") => has_connections = true,
+                        QName("Parts") => has_parts = true,
+                        QName("Connections") => has_connections = true,
                         _ => {}
                     }
                 }

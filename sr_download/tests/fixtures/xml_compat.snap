@@ -51,12 +51,9 @@ any: Ship:<Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partTy
 verify: true not ship
 raw-ship: ERROR Deserialize
 model-ship: ERROR Deserialize
-raw-save: <Runtime time="0" firstStageActivated="0" solarSystem="A	B
-CD &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
-model-save: <Runtime time="0" firstStageActivated="0" solarSystem="A	B
-CD &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
-any: Save:<Runtime time="0" firstStageActivated="0" solarSystem="A	B
-CD &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
+raw-save: <Runtime time="0" firstStageActivated="0" solarSystem="A&#9;B&#10;C&#13;D &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
+model-save: <Runtime time="0" firstStageActivated="0" solarSystem="A&#9;B&#10;C&#13;D &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
+any: Save:<Runtime time="0" firstStageActivated="0" solarSystem="A&#9;B&#10;C&#13;D &amp;#9;" shipId="1" podId="1"><Nodes/></Runtime>
 ## unmodeled-lander-state
 verify: true verified ship
 raw-ship: <Ship version="1" liftedOff="0" touchingGround="1"><Parts><Part partType="lander-1" id="1" x="0" y="0" editorAngle="0" angle="0" angleV="0"/></Parts><Connections/><DisconnectedParts/></Ship>

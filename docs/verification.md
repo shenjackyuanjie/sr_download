@@ -49,6 +49,8 @@ cargo test --workspace --all-targets --locked
 
 [兼容测试](../sr_download/tests/xml_compat.rs) 逐项比较 typed Raw/Model 读取、自动派发、Raw/Model 写回、验证分类及错误类别；[黄金快照](../sr_download/tests/fixtures/xml_compat.snap) 由上述旧提交的原 XML 实现及 quick-xml 0.41.0 生成，而非用新实现更新预期。
 
+依赖升级到 quick-xml 0.42.0 后重跑该快照：16 组输入里只有 `attribute-control-characters` 的写回结果变化，属性控制字符改为字符引用，其余输出逐字节一致。该行已按 0.42 更新，并新增往返测试固定新行为。
+
 包括：最小 Ship/Runtime、宽松 typed 根名、尾随额外文档、未知扩展、非零布尔与可选缺失、旧根分级、特殊字符/大 ID/阶段顺序、属性控制字符、未建模着陆架/挑战状态、缺失 podId、混合存档节点及错误输入。
 
 原始行为与游戏兼容缺口见 [XML 架构说明](xml-architecture.md)。图算法另外枚举三节点全部 512 种有向图与旧 DFS 对照，并测试两万条边的深链与循环。
